@@ -1,4 +1,2 @@
-{:deps {
-aleph/aleph {:mvn/version "0.7.0-alpha1"}
-
-}}
+{:deps {aleph/aleph {:mvn/version "0.7.0-alpha1"}
+        com.walmartlabs/lacinia {:mvn/version "1.2.1"}}}

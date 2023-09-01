@@ -1,0 +1,4 @@
+{:deps {
+aleph/aleph {:mvn/version "0.7.0-alpha1"}
+
+}}

@@ -1,6 +1,8 @@
 (ns core
   (:require [aleph.http :as http]
-            [manifold.deferred :as d]))
+            [manifold.deferred :as d]
+            [compojure.core :refer [routes GET POST DELETE ANY OPTIONS]]
+            [compojure.route :as route]))
 
 (def cache (atom {}))
 (def running (atom false))
@@ -50,3 +52,13 @@
 ; cache listens to kafka model stream
 ; cache populates deferred 
 
+;data defs
+; bff route,method <- gql
+;     forwarding action <- gql resolver
+;     response action <-gql + ids
+; processor 
+;     kafka topic
+;     event type
+; presentation
+;     kafka topic
+;     event type

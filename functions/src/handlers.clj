@@ -1,7 +1,6 @@
 (ns handlers)
 
-(defn invite-customer [{:keys [db]}
-                       {:keys [email]}]
+(defn invite-customer [{:keys [db] {:keys [email]} :event :as ctx}]
   (if (empty? email)
     {:type :CustomerInviteFailed
      :reason "Email is required"}

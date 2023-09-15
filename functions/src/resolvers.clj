@@ -6,7 +6,7 @@
            (first)))
 
 
-(defn invite-response [{:keys [db events query]}]
+(defn invite-response [{:keys [db query]} events]
   (when-let [id (or (:id (first-of-type :CustomerInvited events))
                     (:id (first-of-type :CustomerInviteFailed events)))]
     (db query {:id id})))

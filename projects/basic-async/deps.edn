@@ -1,4 +1,6 @@
 {:deps
- functions {:local/root "../functions"}
- shell {:local/root "../shell"}
- {org.clojure/core.async {:mvn/version "1.6.681"}}}
+ {functions {:local/root "../../functions"}
+  shell {:local/root "../../shell"}
+  org.clojure/core.async
+  {:mvn/version "1.6.681"}}}
+

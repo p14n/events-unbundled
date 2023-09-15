@@ -1,6 +1,6 @@
 (ns projectors)
 
-(defn project-customer [{:keys [entity event]}]
+(defn project-customer [{:keys [entity] :as ctx} event]
   (case (:type event)
     :CustomerInvited
     (-> entity

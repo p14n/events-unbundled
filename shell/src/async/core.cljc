@@ -2,8 +2,7 @@
   (:require [clojure.core.async :as a]
             [common.core :as cc])
   (:import [java.io Closeable]
-           [java.lang Throwable]
-           [java.lang Thread]))
+           [java.lang Throwable]))
 
 ;;Create a channel for handlers to listen to
 ;;Read/dispatch to handlers
@@ -15,17 +14,14 @@
 ;;start bff queue
 
 
-
-(defn create-closable-channel []
-  (cc/closeable (a/chan) a/close!))
-
 (defn attach-handler ^Closeable [ctx ch handler]
+  (println "Attaching handler" handler "to incoming channel" ch)
   (let [running (atom true)]
     (a/go
       (while @running
         (let [event (a/<! ch)]
           (when event
-            (println "Received event" event)
+            (println "Received event" event handler)
             (handler ctx event)))))
     (cc/closeable [ch running] (fn [[ch running]]
                                  (reset! running false)
@@ -44,17 +40,54 @@
                                       (.close c)) %)))))))
 
 (defn wrap-handler [handler out]
-  (fn [ctx event]
-    (try
-      (let [res (handler ctx event)]
-        (when res
-          (println "Sending result" res)
-          (a/put! out res)))
-      (catch Throwable e
-        (println "Error in handler" e)))))
+  (println "Wrapping handler" handler "to outgoing channel" out)
+  (let [h (fn [ctx event]
+            (try
+              (let [res (handler ctx event)]
+                (when res
+                  (println "Sending result" res)
+                  (a/put! out res)))
+              (catch Throwable e
+                (println "Error in handler" e))))]
+    (with-meta h (meta handler))))
 
-(defn start-system [ctx handlers command events]
-  (let [system (attach-handlers ctx command (map #(wrap-handler % events) handlers))]
+(defn wrap-handlers [channels handlers]
+  (map (fn [handler]
+         (if-let [out-ch (-> handler meta :out channels)]
+           (wrap-handler handler out-ch)
+           handler)) handlers))
+
+(defn group-by-in [handlers]
+  (->> handlers
+       (reduce (fn [ac vl]
+                 (->> vl meta :in
+                      (reduce (fn [ac2 vl2]
+                                (update ac2 vl2 #(conj % vl)))
+                              ac)))
+               {})))
+
+(defn start-system [ctx handlers channels]
+  (println "Starting system" handlers channels)
+  (let [grouped-handlers (->> handlers
+                              (wrap-handlers channels)
+                              (group-by-in))
+        system (doall (->> grouped-handlers
+                           (map (fn [[ch-name ch-handlers]]
+                                  (attach-handlers ctx (channels ch-name) ch-handlers)))))]
     (cc/closeable system (fn [system]
                            (println "Closing system")
-                           (.close system)))))
+                           (->> system (map #(.close %)))))))
+
+(defn get-all-channel-names [handlers]
+  (->> handlers
+       (map meta)
+       (map (juxt :in :out))
+       flatten
+       (remove nil?)
+       (set)))
+
+(defn create-all-channels-closable [channel-names]
+  (let [channels (->> channel-names
+                      (map #(do [% (a/chan)]))
+                      (into {}))]
+    (cc/closeable channels #(doall (->> % vals (map a/close!))))))

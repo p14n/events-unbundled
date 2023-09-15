@@ -32,3 +32,6 @@
            #(if (realized? %)
               (future-call init-fn)
               (throw (ex-info "already running" {}))))))
+
+(defmacro fn-meta [f]
+  `(-> ~f var meta))

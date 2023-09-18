@@ -1,35 +1,33 @@
 (ns bff.cache
   (:require [manifold.deferred :as d]))
 
-(def cache (atom {}))
-(def running (atom false))
+(def response-cache (atom {}))
 
-(defn infinite-loop [function]
-  (function)
-  (println "looping")
-  (if @running
-    (future (infinite-loop function)))
-  nil)
+(defn create-command-sender [resolvers command-ch]
+  (fn [cmd]
+    (let [ctype (:type cmd)
+          resolver (get resolvers ctype)
+          id (str (rand-int 1000000))
+          df (d/deferred)]
+      (swap! response-cache assoc id {:d df :resolver resolver :events []})
+      (command-ch (assoc cmd :res-corr-id id))
+      df)))
 
-(defn response [id]
-  {:status 200
-   :headers {"content-type" "text/plain"}
-   :body (str "hello " id)})
+(defn add-event-to-response-cache [id event]
+  (swap! response-cache
+         (fn [c]
+           (let [r (c id)
+                 u (assoc r :events (conj (:events r) (or (:response event) event)))]
+             (assoc c id u)))))
 
-(defn respond-from-cache []
-  (doall (map (fn [[id {:keys [d]}]]
-                (do (d/success! d (response id))
-                    (swap! cache #(dissoc % id)))) @cache)))
-
-(defn cache-handler [req]
-  (let [id (str (rand-int 1000000))
-        d (d/deferred)]
-    (swap! cache assoc id {:d d})
-    d))
-
-(defn start-cache []
-  (let [_ (reset! running true)
-        _ (infinite-loop #(do
-                            (Thread/sleep 5000)
-                            (respond-from-cache)))]
-    #(reset! running false)))
+(defn responder [ctx event]
+  (let [id (or (:res-corr-id event) (-> event :event :res-corr-id))
+        _ (println "Responder received event" event "with id" id)
+        ;_ (println (@response-cache id))
+        {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
+        ;_ (println "Resolver run" id)
+        res (resolver ctx events)
+        _ (println "Resolver returned" res)]
+    (when res
+      (d/success! d res)
+      (swap! response-cache dissoc id))))

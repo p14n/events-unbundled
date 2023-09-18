@@ -35,3 +35,13 @@
 
 (defmacro fn-meta [f]
   `(-> ~f var meta))
+
+(defn first-of-type [type events]
+  (some->> events
+           (filter #(= (:type %) type))
+           (first)))
+
+(defn map-command-type-to-resolver [resolvers]
+  (->> resolvers
+       (map #(do [(-> % meta :type) %]))
+       (into {})))

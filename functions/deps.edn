@@ -1,4 +1,4 @@
-{:deps {}
+{:deps {shell {:local/root "../shell"}}
  :paths ["src" "test"]
  :aliases {:kaocha {:extra-paths ["test"]
                     :main-opts ["-m" "kaocha.runner"]

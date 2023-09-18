@@ -1,14 +1,12 @@
-(ns resolvers)
-
-(defn first-of-type [type events]
-  (some->> events
-           (filter #(= (:type %) type))
-           (first)))
+(ns resolvers
+  (:require [common.core :refer [first-of-type]]))
 
 
-(defn invite-response [{:keys [db query]} events]
-  (when-let [id (or (:id (first-of-type :CustomerInvited events))
-                    (:id (first-of-type :CustomerInviteFailed events)))]
-    (db query {:id id})))
+(def invite-response
+  ^{:type :InviteCustomer}
+  (fn [{:keys [db]} events]
+    (when-let [id (or (:id (first-of-type :CustomerInvited events))
+                      (:id (first-of-type :CustomerInviteFailed events)))]
+      (get @db id))))
     
     

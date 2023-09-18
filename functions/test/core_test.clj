@@ -6,11 +6,10 @@
 
 (deftest projects-invite-customer-test
   (testing "invite customer"
-    (let [cmd {:email "dean@p14n.com"}
-          ev (h/invite-customer {} cmd)
-          prj (p/project-customer {} ev)
-          db (fn [q {:keys [id]}] (when (= id (:id ev)) prj))
-          result (r/invite-response {:db db} [ev])]
+    (let [cmd {:email "dean@p14n.com" :type :InviteCustomer}
+          ev (h/invite-customer {:db (atom {})} cmd)
+          prj (p/project-customer ev {})
+          result (r/invite-response {:db (atom {(:id ev) prj})} [ev])]
       (is (= {:email "dean@p14n.com" :invited true}
              (dissoc result :id))
           (is (= (:id ev) (:id result)))))))

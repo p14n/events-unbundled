@@ -22,12 +22,13 @@
 
 (defn responder [ctx event]
   (let [id (or (:res-corr-id event) (-> event :event :res-corr-id))
-        _ (println "Responder received event" event "with id" id)
+        ;_ (println "Responder received event" event "with id" id)
         ;_ (println (@response-cache id))
         {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
         ;_ (println "Resolver run" id)
         res (resolver ctx events)
-        _ (println "Resolver returned" res)]
+        ;_ (println "Resolver returned" res)
+        ]
     (when res
       (d/success! d res)
       (swap! response-cache dissoc id))))

@@ -2,18 +2,6 @@
   (:require [bff.core :as bff]
             [bff.cache :as cache]))
 
-(def schema
-  {:objects
-
-   {:Customer {:fields
-               {:id {:type String}
-                :email {:type String}
-                :invited {:type Boolean}}}}
-   :Mutation
-   {:fields
-    {:invite {:type :Customer
-              :description "Invite a customer"
-              :args {:email {:type String}}}}}})
 
 (defn start []
   (bff/start-bff cache/cache-handler))

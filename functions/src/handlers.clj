@@ -2,7 +2,7 @@
 
 (def invite-customer
   ^{:in [:commands] :out :customer}
-  (fn [{:keys [db notify-ch] :as ctx} {:keys [email type] :as event}]
+  (fn [{:keys [db notify-ch]} {:keys [email type] :as event}]
     (case type
       :InviteCustomer
       (if (empty? email)

@@ -1,14 +1,17 @@
 (ns common.core
+  (:require [com.kroo.epilogue :as log])
   (:import [java.util.concurrent CancellationException]
            [java.lang Thread]))
 
 (defn closeable
-  ([value] (closeable value identity))
-  ([value close] (reify
-                   clojure.lang.IDeref
-                   (deref [_] value)
-                   java.io.Closeable
-                   (close [_] (close value)))))
+  ([name value] (closeable name value identity))
+  ([name value close] (reify
+                        clojure.lang.IDeref
+                        (deref [_] value)
+                        java.io.Closeable
+                        (close [_]
+                          (log/info (str "Closing " name) {})
+                          (close value)))))
 
 (defn publishing-state [do-with-state target-atom]
   #(do (reset! target-atom %)
@@ -16,7 +19,9 @@
             (finally (reset! target-atom nil)))))
 
 (defn forever [_]
-  (.join (Thread/currentThread)))
+  (try
+    (.join (Thread/currentThread))
+    (catch InterruptedException _ :stopped)))
 
 
 (defn stop-fn [instance-atom]
@@ -33,8 +38,7 @@
               (future-call init-fn)
               (throw (ex-info "already running" {}))))))
 
-(defmacro fn-meta [f]
-  `(-> ~f var meta))
+(def fn-name str)
 
 (defn first-of-type [type events]
   (some->> events

@@ -1,18 +1,23 @@
 (ns bff.cache
-  (:require [manifold.deferred :as d]))
+  (:require [manifold.deferred :as d]
+            [com.kroo.epilogue :as log])
+  (:import [java.lang Throwable]))
 
 (def response-cache (atom {}))
 
 (defn create-command-sender [resolvers command-ch]
   (fn [cmd]
-    (let [_ (println "command-sender" cmd)
-          ctype (:type cmd)
-          resolver (get resolvers ctype)
-          id (str (rand-int 1000000))
-          df (d/deferred)]
-      (swap! response-cache assoc id {:d df :resolver resolver :events []})
-      (command-ch (assoc cmd :res-corr-id id))
-      df)))
+    (log/info "Sending command" {:command cmd})
+    (try
+      (let [ctype (:type cmd)
+            resolver (get resolvers ctype)
+            id (str (rand-int 1000000))
+            df (d/deferred)]
+        (swap! response-cache assoc id {:d df :resolver resolver :events []})
+        (command-ch (assoc cmd :res-corr-id id))
+        df)
+      (catch Throwable e
+        (log/error "Error sending command" {:command cmd} :cause e)))))
 
 (defn add-event-to-response-cache [id event]
   (swap! response-cache
@@ -22,13 +27,11 @@
              (assoc c id u)))))
 
 (defn responder [ctx event]
+  (log/info "Responder received event" {:event event})
   (let [id (or (:res-corr-id event) (-> event :event :res-corr-id))
-        _ (println "Responder received event" event "with id" id)
-        ;_ (println (@response-cache id))
         {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
-        ;_ (println "Resolver run" id)
         res (resolver ctx events)
-        _ (println "Resolver returned" res)]
+        _ (log/info "Responser returning" {:result res})]
     (when res
       (d/success! d res)
       (swap! response-cache dissoc id))))

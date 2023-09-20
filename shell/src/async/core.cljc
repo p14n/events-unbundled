@@ -5,28 +5,23 @@
   (:import [java.io Closeable]
            [java.lang Throwable]))
 
-;;Create a channel for handlers to listen to
-;;Read/dispatch to handlers
-;;Write to events channel
-
-
-;;start projectors
-;;start event handlers
-;;start bff queue
-
 
 (defn attach-handler ^Closeable [ctx ch handler ch-name]
-  (log/info "Attaching handler to incoming channel" {:handler (str handler) :channel ch-name})
-  (let [running (atom true)]
+  (let [running (atom true)
+        fname (cc/fn-name handler)]
+    (log/info "Attaching handler to incoming channel" {:handler fname :channel ch-name})
     (a/go
       (while @running
-        (let [event (a/<! ch)]
-          (when event
-            (log/info "Received event" {:handler (str handler) :channel ch-name :event event})
-            (handler ctx event)))))
-    (cc/closeable [ch running] (fn [[ch running]]
+        (try
+          (let [event (a/<! ch)]
+            (when event
+              (log/info (str "Received event:" fname) {:handler fname :channel ch-name :event event})
+              (handler ctx event)))
+          (catch Throwable e
+            (log/error (str "Error in handler " fname) {:handler fname :channel ch-name} :cause e)))))
+    (cc/closeable (keyword (str ch-name) fname)
+                  [ch running] (fn [[ch running]]
                                  (reset! running false)
-                                 (log/info "Stopping handler" {:handler (str handler)})
                                  (a/close! ch)))))
 
 (defn attach-handlers [ctx in handlers ch-name]
@@ -35,23 +30,23 @@
      (doall (map (fn [handler]
                    (let [handler-ch (a/tap multi-ch (a/chan))]
                      (attach-handler ctx handler-ch handler ch-name))) handlers))
-     (cc/closeable #(do
+     (cc/closeable :handlers
+                   #(do
                       (log/info "Stopping handlers" {})
-                      (doall (map (fn [c]
-                                    (println "Closing handler" c)
-                                    (.close c)) %)))))))
+                      (doall (map (fn [c] (.close c)) %)))))))
 
 (defn wrap-handler [handler out ch-name]
-  (log/info "Attaching handler to outgoing channel" {:handler (str handler) :channel ch-name})
-  (let [h (fn [ctx event]
+  (let [fname (cc/fn-name handler)
+        _ (log/info "Attaching handler to outgoing channel" {:handler fname :channel ch-name})
+        h (fn [ctx event]
             (try
               (let [id (:res-corr-id event)
                     res (handler ctx event)]
                 (when res
-                  (log/info "Sending result to channel" {:handler (str handler) :channel ch-name :result res})
+                  (log/info "Sending result to channel" {:handler fname :channel ch-name :result res})
                   (a/put! out (assoc res :res-corr-id id))))
               (catch Throwable e
-                (log/error "Error in handler" {:handler (str handler) :channel ch-name :event event} :cause e))))]
+                (log/error "Error in handler" {:handler fname :channel ch-name :event event} :cause e))))]
     (with-meta h (meta handler))))
 
 (defn wrap-handlers [handlers channels]
@@ -73,18 +68,17 @@
                {})))
 
 (defn start-system [ctx handlers channels responder]
-  (log/info "Starting system" {:handlers (map str handlers) :channels (keys channels)})
+  (log/info "Starting system" {:handlers (map cc/fn-name handlers) :channels (keys channels)})
   (let [grouped-handlers (-> handlers
                              (wrap-handlers channels)
                              (group-by-in)
                              (update :notify conj responder))
-        _ (println "Grouped handlers" grouped-handlers)
         system (doall (->> grouped-handlers
                            (map (fn [[ch-name ch-handlers]]
                                   (attach-handlers ctx (channels ch-name) (conj ch-handlers responder) ch-name)))))]
-    (cc/closeable system (fn [system]
-                           (log/info "Closing system" {})
-                           (->> system (map #(.close %)))))))
+    (cc/closeable :system system (fn [system]
+                                   (log/info "Closing system" {})
+                                   (->> system (map #(.close %)))))))
 
 (defn get-all-channel-names [handlers]
   (->> handlers
@@ -98,4 +92,4 @@
   (let [channels (->> channel-names
                       (map #(do [% (a/chan)]))
                       (into {}))]
-    (cc/closeable channels #(doall (->> % vals (map a/close!))))))
+    (cc/closeable :channels channels #(doall (->> % vals (map a/close!))))))

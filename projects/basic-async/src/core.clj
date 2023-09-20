@@ -12,16 +12,16 @@
   (fn [do-with-state]
     (with-open [channels (->> (conj (ac/get-all-channel-names handlers) :commands :notify)
                               ac/create-all-channels-closable)
-                db (c/closeable (atom {}) #(reset! % {}))
-                st (c/closeable {:channels @channels
-                                 :command-sender (bff/create-command-sender
-                                                  (c/map-command-type-to-resolver resolvers)
-                                                  (fn [cmd] (a/put! (:commands @channels) cmd
-                                                                    (fn [a] (println "Command sent " a cmd)))))
-                                 :notify-ch (fn [ev res]
-                                              (a/put! (:notify @channels) (assoc res :res-corr-id (:res-corr-id ev)))
-                                              nil)
-                                 :db @db})
+                db (c/closeable :db (atom {}) #(reset! % {}))
+                st (c/closeable :state {:channels @channels
+                                        :command-sender (bff/create-command-sender
+                                                         (c/map-command-type-to-resolver resolvers)
+                                                         (fn [cmd] (a/put! (:commands @channels) cmd
+                                                                           (fn [a] (println "Command sent " a cmd)))))
+                                        :notify-ch (fn [ev res]
+                                                     (a/put! (:notify @channels) (assoc res :res-corr-id (:res-corr-id ev)))
+                                                     nil)
+                                        :db @db})
                 system (ac/start-system @st handlers @channels bff/responder)]
       (do-with-state @st))))
 

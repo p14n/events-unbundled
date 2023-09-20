@@ -6,8 +6,9 @@
             [com.walmartlabs.lacinia.parser :as parser]
             [clojure.data.json :as json]
             [manifold.deferred :as d]
-            [clojure.core.async :as a]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [com.kroo.epilogue :as log])
+  (:import [java.lang Throwable]))
 
 (defn to-http [result]
   {:status 200
@@ -16,16 +17,16 @@
 
 (defn create-graphql-resolver [ctype command-sender]
   (fn [_ a _]
-    (let [_ (println "create-graphql-resolver" a ctype)
-          cmd (assoc a :type ctype)
+    (log/info (str "graphql resolver called " ctype) {:args a :mutation ctype})
+    (let [cmd (assoc a :type ctype)
           pr (resolve/resolve-promise)
           dr (command-sender cmd)
           _ (d/on-realized dr
                            (fn [x]
-                             (println "create-graphql-resolver result" x)
+                             (log/info (str "graphql resolver result " ctype) {:result x :mutation ctype})
                              (resolve/deliver! pr x))
                            (fn [x]
-                             (println x)
+                             (log/error (str "graphql resolver error " ctype) {:mutation ctype :command cmd} :cause x)
                              (resolve/with-error pr x)))]
       pr)))
 
@@ -43,19 +44,20 @@
   (let [gql-resolver-map (->> resolvers
                               (map (partial resolver-k-v command-sender))
                               (into {}))
-        _ (println gql-resolver-map)
-        _ (println schema)
         compiled (compile-schema schema gql-resolver-map)]
     (fn [req]
-      (let [body (-> req :body io/reader (json/read {:key-fn keyword}))
-            query (get-in body [:query])
-            ;_ (println req)
-            _ (println body)
-            ;_ (println query)
-            vars (get-in body [:variables])
-            ;_ (println vars)
-            parsed (parser/parse-query compiled query nil)
-            d (d/deferred)
-            result (execute-parsed-query-async parsed vars {})]
-        (resolve/on-deliver! result (fn [x] (d/success! d (to-http x))))
-        d))))
+      (log/info "graphql handler request" {:request req})
+      (try
+        (let [body (-> req :body io/reader (json/read {:key-fn keyword}))
+              query (get-in body [:query])
+              vars (get-in body [:variables])
+              parsed (parser/parse-query compiled query nil)
+              d (d/deferred)
+              result (execute-parsed-query-async parsed vars {})]
+          (resolve/on-deliver! result
+                               (fn [x]
+                                 (log/info "graphql handler return" {:data (str x)})
+                                 (d/success! d (to-http x))))
+          d)
+        (catch Throwable e
+          (log/error "Error in gql handler" {:request req} :cause e))))))

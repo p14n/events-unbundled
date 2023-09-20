@@ -5,7 +5,8 @@
 
 (defn create-command-sender [resolvers command-ch]
   (fn [cmd]
-    (let [ctype (:type cmd)
+    (let [_ (println "command-sender" cmd)
+          ctype (:type cmd)
           resolver (get resolvers ctype)
           id (str (rand-int 1000000))
           df (d/deferred)]
@@ -22,13 +23,12 @@
 
 (defn responder [ctx event]
   (let [id (or (:res-corr-id event) (-> event :event :res-corr-id))
-        ;_ (println "Responder received event" event "with id" id)
+        _ (println "Responder received event" event "with id" id)
         ;_ (println (@response-cache id))
         {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
         ;_ (println "Resolver run" id)
         res (resolver ctx events)
-        ;_ (println "Resolver returned" res)
-        ]
+        _ (println "Resolver returned" res)]
     (when res
       (d/success! d res)
       (swap! response-cache dissoc id))))

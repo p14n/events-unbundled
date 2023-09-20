@@ -6,7 +6,7 @@
             [resolvers :as r]
             [common.core :as c]
             [bff.cache :as bff]
-            [bff.http :as http]
+            [aleph.http :as http]
             [bff.graphql :as gql]))
 
 
@@ -22,35 +22,35 @@
                       :description "Invite a customer"
                       :args {:email {:type String}}}}})
 
-;; (defn name->path
-;;   "Given a key, such as :queries/user_by_id or :User/full_name, return the
-;;   path from the root of the schema to (and including) the path-ex key."
-;;   [schema k path-ex]
-;;   (let [container-name (-> k namespace keyword)
-;;         field-name (-> k name keyword)
-;;         path (if (operation-containers container-name)
-;;                [container-name field-name]
-;;                [:objects container-name :fields field-name])]
-;;     (when-not (get-in schema path)
-;;       (throw (ex-info "inject error: not found"
-;;                       {:key k})))
-
-;;     (conj path path-ex)))
+;; create-graphql-resolver {:email dean@p14n.comc} :InviteCustomer
+;; command-sender {:email dean@p14n.comc, :type :InviteCustomer}
+;; Command sent  true {:email dean@p14n.comc, :type :InviteCustomer, :res-corr-id 582121}
+;; {"handler":"bff.cache$responder@401a0f5d","logger.thread_name":"async-dispatch-4","level":"INFO","logger.name":"async.core","channel":"commands","logger.source":{"line":25,"column":13,"file":"async/core.cljc","namespace":"async.core"},"message":"Received event","event":{"email":"dean@p14n.comc","type":"InviteCustomer","res-corr-id":"582121"},"timestamp":"2023-09-20T07:29:37.322481Z"}
+;; Responder received event {:email dean@p14n.comc, :type :InviteCustomer, :res-corr-id 582121} with id 582121
+;; invite-response {"handler":"clojure.lang.AFunction$1@14815ca7","logger.thread_name":"async-dispatch-5","level":"INFO","logger.name":"async.core","channel":"commands","logger.source":{"line":25,"column":13,"file":"async/core.cljc","namespace":"async.core"},"message":"Received event","event":{"email":"dean@p14n.comc","type":"InviteCustomer","res-corr-id":"582121"},"timestamp":"2023-09-20T07:29:37.322500Z"}
+;; [
+;; {:email dean@p14n.comc, :type :InviteCustomer, :res-corr-id 582121}]
+;; No id found
+;; Resolver returned nil
 
 (defn create-system [handlers resolvers]
   (fn [do-with-state]
     (with-open [channels (->> (conj (ac/get-all-channel-names handlers) :commands :notify)
                               ac/create-all-channels-closable)
                 db (c/closeable (atom {}) #(reset! % {}))
+                command-sender (c/closeable (bff/create-command-sender
+                                             (c/map-command-type-to-resolver resolvers)
+                                             (fn [cmd] (a/put! (:commands @channels) cmd
+                                                               (fn [a] (println "Command sent " a cmd))))))
+                http (http/start-server (gql/create-gql-handler schema resolvers @command-sender)
+                                        {:port 8080})
                 st (c/closeable {:channels @channels
-                                 :command-sender (bff/create-command-sender
-                                                  (c/map-command-type-to-resolver resolvers)
-                                                  (fn [cmd] (a/put! (:commands @channels) cmd)))
+                                 :command-sender @command-sender
+                                 :http http
                                  :notify-ch (fn [ev res]
                                               (a/put! (:notify @channels) (assoc res :res-corr-id (:res-corr-id ev)))
                                               nil)
                                  :db @db})
-                http (http/start-http (gql/create-gql-handler schema resolvers (:command-sender @st)))
                 system (ac/start-system @st handlers @channels bff/responder)]
       (do-with-state @st))))
 
@@ -59,9 +59,9 @@
                   p/project-customer-to-simple-db]
                  [r/invite-response]))
 
-(def state (atom nil))
-(def instance (atom (future ::never-run)))
+(defonce state (atom nil))
+(defonce instance (atom (future ::never-run)))
 
-(def start (c/start-fn instance #(with-system (c/publishing-state c/forever state))))
-(def stop (c/stop-fn instance))
+(defonce start (c/start-fn instance #(with-system (c/publishing-state c/forever state))))
+(defonce stop (c/stop-fn instance))
 

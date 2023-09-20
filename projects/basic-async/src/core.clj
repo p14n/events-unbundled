@@ -16,7 +16,8 @@
                 st (c/closeable {:channels @channels
                                  :command-sender (bff/create-command-sender
                                                   (c/map-command-type-to-resolver resolvers)
-                                                  (fn [cmd] (a/put! (:commands @channels) cmd)))
+                                                  (fn [cmd] (a/put! (:commands @channels) cmd
+                                                                    (fn [a] (println "Command sent " a cmd)))))
                                  :notify-ch (fn [ev res]
                                               (a/put! (:notify @channels) (assoc res :res-corr-id (:res-corr-id ev)))
                                               nil)
@@ -30,7 +31,7 @@
                  [r/invite-response]))
 
 (def state (atom nil))
-(def instance (atom (future ::never-run)))
+(defonce instance (atom (future ::never-run)))
 
 (def start (c/start-fn instance #(with-system (c/publishing-state c/forever state))))
 (def stop (c/stop-fn instance))

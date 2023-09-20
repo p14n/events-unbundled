@@ -16,10 +16,17 @@
 
 (defn create-graphql-resolver [ctype command-sender]
   (fn [_ a _]
-    (let [cmd (assoc a :type ctype)
+    (let [_ (println "create-graphql-resolver" a ctype)
+          cmd (assoc a :type ctype)
           pr (resolve/resolve-promise)
           dr (command-sender cmd)
-          _ (d/on-realized dr (fn [x] (resolve/deliver! pr x)) identity)]
+          _ (d/on-realized dr
+                           (fn [x]
+                             (println "create-graphql-resolver result" x)
+                             (resolve/deliver! pr x))
+                           (fn [x]
+                             (println x)
+                             (resolve/with-error pr x)))]
       pr)))
 
 (defn compile-schema [schema resolvers]
@@ -42,11 +49,11 @@
     (fn [req]
       (let [body (-> req :body io/reader (json/read {:key-fn keyword}))
             query (get-in body [:query])
-            _ (println req)
+            ;_ (println req)
             _ (println body)
-            _ (println query)
+            ;_ (println query)
             vars (get-in body [:variables])
-            _ (println vars)
+            ;_ (println vars)
             parsed (parser/parse-query compiled query nil)
             d (d/deferred)
             result (execute-parsed-query-async parsed vars {})]

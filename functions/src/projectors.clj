@@ -11,9 +11,11 @@
 
 (def project-customer-to-simple-db
   ^{:in [:customer]}
-  (fn [{:keys [db]} {:keys [id] :as event}]
+  (fn [{:keys [db notify-ch]} {:keys [id] :as event}]
     (->> id
          (@db)
          (project-customer event)
-         (swap! db assoc id))))
+         (swap! db assoc id))
+    (notify-ch event {:type :ProjectionComplete
+                      :id id})))
     

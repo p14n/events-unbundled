@@ -49,3 +49,11 @@
   (->> resolvers
        (map #(do [(-> % meta :type) %]))
        (into {})))
+
+(defn get-all-channel-names [handlers]
+  (->> handlers
+       (map meta)
+       (map (juxt :in :out))
+       flatten
+       (remove nil?)
+       (set)))

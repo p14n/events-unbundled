@@ -26,7 +26,7 @@
 
 (defn create-system [handlers resolvers]
   (fn [do-with-state]
-    (try (with-open [channels (->> (conj (ac/get-all-channel-names handlers) :commands :notify)
+    (try (with-open [channels (->> (conj (c/get-all-channel-names handlers) :commands :notify)
                                    ac/create-all-channels-closable)
                      db (c/closeable :db (atom {}) #(reset! % {}))
                      command-sender (c/closeable :command-sender (bff/create-command-sender

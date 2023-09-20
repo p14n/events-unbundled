@@ -80,14 +80,6 @@
                                    (log/info "Closing system" {})
                                    (->> system (map #(.close %)))))))
 
-(defn get-all-channel-names [handlers]
-  (->> handlers
-       (map meta)
-       (map (juxt :in :out))
-       flatten
-       (remove nil?)
-       (set)))
-
 (defn create-all-channels-closable [channel-names]
   (let [channels (->> channel-names
                       (map #(do [% (a/chan)]))

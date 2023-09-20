@@ -10,7 +10,7 @@
 
 (defn create-system [handlers resolvers]
   (fn [do-with-state]
-    (with-open [channels (->> (conj (ac/get-all-channel-names handlers) :commands :notify)
+    (with-open [channels (->> (conj (c/get-all-channel-names handlers) :commands :notify)
                               ac/create-all-channels-closable)
                 db (c/closeable :db (atom {}) #(reset! % {}))
                 st (c/closeable :state {:channels @channels

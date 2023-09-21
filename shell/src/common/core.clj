@@ -38,7 +38,10 @@
               (future-call init-fn)
               (throw (ex-info "already running" {}))))))
 
-(def fn-name str)
+(defn fn-name [f]
+  (if-let [n (-> f meta :name)]
+    n
+    (str f)))
 
 (defn first-of-type [type events]
   (some->> events
@@ -57,3 +60,17 @@
        flatten
        (remove nil?)
        (set)))
+
+(defn wrap-handler [handler ch-func ch-name]
+  (let [fname (fn-name handler)
+        _ (log/info "Attaching handler to outgoing channel" {:handler fname :channel ch-name})
+        h (fn [ctx event]
+            (try
+              (let [id (:res-corr-id event)
+                    res (handler ctx event)]
+                (when res
+                  (log/info "Sending result to channel" {:handler fname :channel ch-name :result res})
+                  (ch-func (assoc res :res-corr-id id))))
+              (catch Throwable e
+                (log/error "Error in handler" {:handler fname :channel ch-name :event event} :cause e))))]
+    (with-meta h (meta handler))))

@@ -35,26 +35,13 @@
                       (log/info "Stopping handlers" {})
                       (doall (map (fn [c] (.close c)) %)))))))
 
-(defn wrap-handler [handler out ch-name]
-  (let [fname (cc/fn-name handler)
-        _ (log/info "Attaching handler to outgoing channel" {:handler fname :channel ch-name})
-        h (fn [ctx event]
-            (try
-              (let [id (:res-corr-id event)
-                    res (handler ctx event)]
-                (when res
-                  (log/info "Sending result to channel" {:handler fname :channel ch-name :result res})
-                  (a/put! out (assoc res :res-corr-id id))))
-              (catch Throwable e
-                (log/error "Error in handler" {:handler fname :channel ch-name :event event} :cause e))))]
-    (with-meta h (meta handler))))
 
 (defn wrap-handlers [handlers channels]
   (->> handlers
        (map (fn [handler]
               (let [ch-name (some-> handler meta :out)]
                 (if-let [out-ch (channels ch-name)]
-                  (wrap-handler handler out-ch ch-name)
+                  (cc/wrap-handler handler #(a/put! out-ch %) ch-name)
                   handler))))
        (remove nil?)))
 
@@ -78,7 +65,7 @@
                                   (attach-handlers ctx (channels ch-name) (conj ch-handlers responder) ch-name)))))]
     (cc/closeable :system system (fn [system]
                                    (log/info "Closing system" {})
-                                   (->> system (map #(.close %)))))))
+                                   (doall (->> system (map #(.close %))))))))
 
 (defn create-all-channels-closable [channel-names]
   (let [channels (->> channel-names

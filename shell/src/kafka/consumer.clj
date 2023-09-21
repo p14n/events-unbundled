@@ -10,15 +10,16 @@
    (java.io Closeable)
    (org.apache.kafka.clients.consumer ConsumerConfig KafkaConsumer)))
 
-(def consumer-props {ConsumerConfig/GROUP_ID_CONFIG                 "clojure_example_group"
-                     ConsumerConfig/KEY_DESERIALIZER_CLASS_CONFIG   "org.apache.kafka.common.serialization.StringDeserializer"
-                     ConsumerConfig/VALUE_DESERIALIZER_CLASS_CONFIG "org.apache.kafka.common.serialization.StringDeserializer"})
+(defn consumer-props [id]
+  {ConsumerConfig/GROUP_ID_CONFIG                 id
+   ConsumerConfig/KEY_DESERIALIZER_CLASS_CONFIG   "org.apache.kafka.common.serialization.StringDeserializer"
+   ConsumerConfig/VALUE_DESERIALIZER_CLASS_CONFIG "org.apache.kafka.common.serialization.StringDeserializer"})
 
 
 (defn attach-handler ^Closeable [ctx handler ch-names]
   (let [running (atom true)
         fname (cc/fn-name handler)
-        consumer (KafkaConsumer. (kc/build-properties consumer-props))]
+        consumer (KafkaConsumer. (kc/build-properties (consumer-props (str "cqrs_" fname))))]
     (.subscribe consumer (map name ch-names))
     (log/info "Attaching handler to incoming channel" {:handler fname :channels ch-names})
     (a/go

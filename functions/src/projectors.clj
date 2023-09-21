@@ -10,7 +10,7 @@
     nil))
 
 (def project-customer-to-simple-db
-  ^{:in [:customer]}
+  ^{:in [:customer] :name :customer-projector}
   (fn [{:keys [db notify-ch]} {:keys [customer-id] :as event}]
     (->> customer-id
          (@db)

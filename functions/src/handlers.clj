@@ -1,7 +1,7 @@
 (ns handlers)
 
 (def invite-customer
-  ^{:in [:commands] :out :customer}
+  ^{:in [:commands] :out :customer :name :invite-customer-event-handler}
   (fn [{:keys [db notify-ch]} {:keys [email type] :as event}]
     (case type
       :InviteCustomer

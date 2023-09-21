@@ -44,7 +44,7 @@
                                                             (chan v))
                                                           nil)
                                              :db @db})
-                     system (kc/start-system @st handlers bff/responder)]
+                     system (kc/start-system @st handlers (-> @producer-channels :channels) bff/responder)]
            (do-with-state @st))
          (catch Throwable e
            (log/error "Error creating system" {} :cause e)))))

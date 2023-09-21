@@ -1,7 +1,8 @@
 (ns common.core
   (:require [com.kroo.epilogue :as log])
   (:import [java.util.concurrent CancellationException]
-           [java.lang Thread]))
+           [java.lang Thread]
+           [java.util UUID]))
 
 (defn closeable
   ([name value] (closeable name value identity))
@@ -74,3 +75,6 @@
               (catch Throwable e
                 (log/error "Error in handler" {:handler fname :channel ch-name :event event} :cause e))))]
     (with-meta h (meta handler))))
+
+(defn uuid []
+  (str (UUID/randomUUID)))

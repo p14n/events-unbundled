@@ -1,4 +1,5 @@
-(ns handlers)
+(ns handlers
+  (:require [common.core :as cc]))
 
 (def invite-customer
   ^{:in [:commands] :out :customer :name :invite-customer-event-handler}
@@ -16,8 +17,8 @@
                             :customer-id id
                             :reason "Customer already invited"})
 
-          {:event-id (str (java.util.UUID/randomUUID))
+          {:event-id (cc/uuid)
            :type :CustomerInvited
-           :customer-id (str (java.util.UUID/randomUUID))
+           :customer-id (cc/uuid)
            :email email}))
       nil)))

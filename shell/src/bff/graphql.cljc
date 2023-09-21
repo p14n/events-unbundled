@@ -23,8 +23,10 @@
           dr (command-sender cmd)
           _ (d/on-realized dr
                            (fn [x]
-                             (log/info (str "graphql resolver result " ctype) {:result x :mutation ctype})
-                             (resolve/deliver! pr x))
+                             (log/info (str "graphql resolver result " (:type x) " " (:message x) " " (= (:type x) :error)) {:result x :mutation ctype})
+                             (if (= (:type x) :error)
+                               (resolve/deliver! pr nil x)
+                               (resolve/deliver! pr x)))
                            (fn [x]
                              (log/error (str "graphql resolver error " ctype) {:mutation ctype :command cmd} :cause x)
                              (resolve/with-error pr x)))]

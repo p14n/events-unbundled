@@ -7,8 +7,8 @@
       :InviteCustomer
       (if (empty? email)
 
-        {:type :CustomerInviteFailed
-         :reason "Email is required"}
+        (notify-ch event {:type :error
+                          :message "Email is required"})
 
         (if-let [id (->> @db vals (filter #(-> % :email (= email))) first :id)]
 

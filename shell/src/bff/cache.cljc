@@ -30,7 +30,9 @@
   (log/info "Responder received event" {:event event})
   (let [id (or (:res-corr-id event) (-> event :event :res-corr-id))
         {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
-        res (resolver ctx events)
+        res (or
+             (->> events (filter #(= (:type %) :error)) first)
+             (resolver ctx events))
         _ (log/info "Responser returning" {:result res})]
     (when res
       (d/success! d res)

@@ -30,8 +30,15 @@
                   p/project-customer-to-simple-db]
                  [r/invite-response]))
 
+
 (def state (atom nil))
 (defonce instance (atom (future ::never-run)))
+
+(defn get-db []
+  (-> @state :db deref))
+
+(defn send-command [cmd]
+  ((-> @state :command-sender) cmd))
 
 (def start (c/start-fn instance #(with-system (c/publishing-state c/forever state))))
 (def stop (c/stop-fn instance))

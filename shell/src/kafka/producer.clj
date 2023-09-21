@@ -44,7 +44,7 @@
 
 (defn sender-fn [producer name]
   (fn sf
-    ([e] (sf (:id e) e))
+    ([e] (sf (:event-id e) e))
     ([k v] (.send producer (create-record name (str k) (pr-str v))) callback)))
 
 (defn create-producer-channels [channels]

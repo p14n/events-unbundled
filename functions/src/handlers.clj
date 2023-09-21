@@ -13,10 +13,11 @@
         (if-let [id (->> @db vals (filter #(-> % :email (= email))) first :id)]
 
           (notify-ch event {:type :CustomerInviteFailed
-                            :id id
+                            :customer-id id
                             :reason "Customer already invited"})
 
-          {:type :CustomerInvited
-           :id (str (java.util.UUID/randomUUID))
+          {:event-id (str (java.util.UUID/randomUUID))
+           :type :CustomerInvited
+           :customer-id (str (java.util.UUID/randomUUID))
            :email email}))
       nil)))

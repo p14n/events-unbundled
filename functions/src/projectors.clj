@@ -6,16 +6,16 @@
     (-> entity
         (assoc :invited true)
         (assoc :email (:email event))
-        (assoc :id (:id event)))
+        (assoc :id (:customer-id event)))
     nil))
 
 (def project-customer-to-simple-db
   ^{:in [:customer]}
-  (fn [{:keys [db notify-ch]} {:keys [id] :as event}]
-    (->> id
+  (fn [{:keys [db notify-ch]} {:keys [customer-id] :as event}]
+    (->> customer-id
          (@db)
          (project-customer event)
-         (swap! db assoc id))
+         (swap! db assoc customer-id))
     (notify-ch event {:type :ProjectionComplete
-                      :id id})))
+                      :customer-id customer-id})))
     

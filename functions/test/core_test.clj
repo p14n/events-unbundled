@@ -6,10 +6,15 @@
 
 (deftest projects-invite-customer-test
   (testing "invite customer"
-    (let [cmd {:email "dean@p14n.com" :type :InviteCustomer}
-          ev (h/invite-customer {:db (atom {})} cmd)
-          prj (p/project-customer ev {})
-          result (r/invite-response {:db (atom {(:id ev) prj})} [ev])]
+    (let [db (atom {})
+          notify-events (atom [])
+
+          _ (->> {:email "dean@p14n.com" :type :InviteCustomer}
+                 (h/invite-customer {:db db})
+                 (p/project-customer-to-simple-db
+                  {:db db
+                   :notify-ch #(swap! notify-events conj %2)}))
+
+          result (r/invite-response {:db db} @notify-events)]
       (is (= {:email "dean@p14n.com" :invited true}
-             (dissoc result :id))
-          (is (= (:id ev) (:id result)))))))
+             (dissoc result :id))))))

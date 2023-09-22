@@ -8,7 +8,8 @@
             [bff.graphql :as gql]
             [kafka.producer :as kp]
             [com.kroo.epilogue :as log]
-            [kafka.core :as kc]))
+            [kafka.core :as kc]
+            [xt.core :as xt]))
 
 
 (def schema
@@ -29,7 +30,7 @@
                                            (c/get-all-channel-names)
                                            (conj :commands :notify)
                                            (kp/create-producer-channels))
-                     db (c/closeable :db (atom {}) #(reset! % {}))
+                     db (xt/start-node (xt/node-properties "xtdb"))
                      command-sender (c/closeable :command-sender (bff/create-command-sender
                                                                   (c/map-command-type-to-resolver resolvers)
                                                                   (-> @producer-channels :channels :commands)))
@@ -60,3 +61,14 @@
 (defonce start (c/start-fn instance #(with-system (c/publishing-state c/forever state))))
 (defonce stop (c/stop-fn instance))
 
+;db writers
+;write k,v (namespace key?) {:id :cust/423}
+;write map in tx
+;write tx (convert object to tx)  <- process
+;write (honey?) sql () <- process
+
+;db readers
+;read by key
+;read by key
+;read by query
+;read by query, where

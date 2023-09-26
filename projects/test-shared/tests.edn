@@ -1,0 +1,10 @@
+#kaocha/v1
+ {:tests [{:id                  :features
+           :type                :kaocha.type/cucumber
+           :source-paths        []
+           :test-paths          ["../test-shared/features"]
+           :cucumber/glue-paths ["../test-shared/src/"]}]
+  :plugins [:kaocha.plugin/junit-xml]
+  :kaocha.plugin.junit-xml/target-file "target/junit.xml"
+  :cloverage/opts {:summary? false
+                   :codecov? true}}

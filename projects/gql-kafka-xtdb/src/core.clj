@@ -61,14 +61,3 @@
 (defonce start (c/start-fn instance #(with-system (c/publishing-state c/forever state))))
 (defonce stop (c/stop-fn instance))
 
-;db writers
-;write k,v (namespace key?) {:id :cust/423}
-;write map in tx
-;write tx (convert object to tx)  <- process
-;write (honey?) sql () <- process
-
-;db readers
-;read by key
-;read by key
-;read by query
-;read by query, where

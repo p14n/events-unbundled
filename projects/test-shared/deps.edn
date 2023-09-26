@@ -1,0 +1,6 @@
+{:deps
+ {http-kit/http-kit             {:mvn/version "2.3.0"}
+  lambdaisland/kaocha           {:mvn/version "0.0-418"}
+  lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}
+  lambdaisland/kaocha-cloverage {:mvn/version "0.0-32"}
+  lambdaisland/kaocha-cucumber  {:mvn/version "0.0-46"}}}

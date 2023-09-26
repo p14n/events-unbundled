@@ -40,7 +40,7 @@
               (throw (ex-info "already running" {}))))))
 
 (defn fn-name [f]
-  (if-let [n (-> f meta :name)]
+  (if-let [n (some-> f meta :name name)]
     n
     (str f)))
 

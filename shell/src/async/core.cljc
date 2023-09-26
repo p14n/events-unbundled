@@ -26,14 +26,13 @@
 
 (defn attach-handlers [ctx in handlers ch-name]
   (let [multi-ch (a/mult in)]
-    (->
-     (doall (map (fn [handler]
-                   (let [handler-ch (a/tap multi-ch (a/chan))]
-                     (attach-handler ctx handler-ch handler ch-name))) handlers))
-     (cc/closeable :handlers
-                   #(do
-                      (log/info "Stopping handlers" {})
-                      (doall (map (fn [c] (.close c)) %)))))))
+    (cc/closeable :handlers
+                  (doall (map (fn [handler]
+                                (let [handler-ch (a/tap multi-ch (a/chan))]
+                                  (attach-handler ctx handler-ch handler ch-name))) handlers))
+                  #(do
+                     (log/info "Stopping handlers" {})
+                     (doall (map (fn [c] (.close c)) %))))))
 
 
 (defn wrap-handlers [handlers channels]

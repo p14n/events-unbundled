@@ -1,6 +1,7 @@
 (ns bff.cache
   (:require [manifold.deferred :as d]
-            [com.kroo.epilogue :as log])
+            [com.kroo.epilogue :as log]
+            [common.protocol :as prot])
   (:import [java.lang Throwable]))
 
 (def response-cache (atom {}))
@@ -26,7 +27,7 @@
                  u (assoc r :events (conj (:events r) (or (:response event) event)))]
              (assoc c id u)))))
 
-(defn responder [ctx event]
+(defn responder [ctx event _]
   (log/info "Responder received event" {:event event})
   (let [id (or (:res-corr-id event) (-> event :event :res-corr-id))
         {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
@@ -37,3 +38,6 @@
     (when res
       (d/success! d res)
       (swap! response-cache dissoc id))))
+
+(def responder-executor
+  (prot/->Executor (prot/->SimpleHandler responder)))

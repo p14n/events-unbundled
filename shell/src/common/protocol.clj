@@ -13,10 +13,11 @@
 (deftype Executor [^IHandler h]
   IExecute
   (execute [_ ctx event]
-    (->> event
-         (lookup h ctx)
-         (transform h ctx event)
-         (write h ctx)))
+    (let [_ctx (assoc ctx :notify-ch (partial (:notify-ch ctx) event))]
+      (->> event
+           (lookup h _ctx)
+           (transform h _ctx event)
+           (write h _ctx))))
   (meta [_]
     (transformer-meta h)))
 
@@ -25,7 +26,7 @@
   (lookup [_ _ _] {})
   (transform [_ ctx event data]
     (transformer ctx event data))
-  (write [_ _ event] (event))
+  (write [_ _ event] event)
   (transformer-meta [_] (clojure.core/meta transformer)))
 
 (deftype LookupHandler [looker-upper transformer]
@@ -33,7 +34,15 @@
   (lookup [_ ctx event] (looker-upper ctx event))
   (transform [_ ctx event data]
     (transformer ctx event data))
-  (write [_ _ event] (event))
+  (write [_ _ event] event)
+  (transformer-meta [_] (clojure.core/meta transformer)))
+
+(deftype LookupWriterHandler [looker-upper transformer writer]
+  IHandler
+  (lookup [_ ctx event] (looker-upper ctx event))
+  (transform [_ ctx event data]
+    (transformer ctx event data))
+  (write [_ ctx event] (writer ctx event))
   (transformer-meta [_] (clojure.core/meta transformer)))
 
 ;db writers

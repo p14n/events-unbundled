@@ -1,21 +1,31 @@
-(ns projectors)
+(ns projectors
+  (:require [common.protocol :as prot]))
 
-(defn project-customer [event entity]
-  (case (:type event)
-    :CustomerInvited
-    (-> entity
-        (assoc :invited true)
-        (assoc :email (:email event))
-        (assoc :id (:customer-id event)))
-    nil))
+(def project-customer
+  ^{:in [:customer] :name :customer-projector}
+  (fn [_ event entity]
+    (case (:type event)
+      :CustomerInvited
+      (-> entity
+          (assoc :invited true)
+          (assoc :email (:email event))
+          (assoc :id (:customer-id event)))
+      nil)))
+
 
 (def project-customer-to-simple-db
-  ^{:in [:customer] :name :customer-projector}
-  (fn [{:keys [db notify-ch]} {:keys [customer-id] :as event}]
-    (->> customer-id
-         (@db)
-         (project-customer event)
-         (swap! db assoc customer-id))
-    (notify-ch event {:type :ProjectionComplete
-                      :customer-id customer-id})))
-    
+  (prot/->Executor
+   (prot/->LookupWriterHandler
+
+    (fn [{:keys [db]} {:keys [customer-id]}]
+      (->> customer-id
+           (@db)))
+
+    project-customer
+
+    (fn [{:keys [db notify-ch]}
+         {:keys [id] :as entity}]
+      (swap! db assoc id entity)
+      (notify-ch {:type :ProjectionComplete :customer-id id})))))
+
+

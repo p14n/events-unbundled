@@ -2,13 +2,16 @@
   (:require [common.core :refer [first-of-type]]))
 
 
-(def invite-response
+(defn invite-responser [db-lookup]
   ^{:type :InviteCustomer}
   (fn [{:keys [db]} events]
     (println "invite-response" events)
     (if-let [id (or (:customer-id (first-of-type :ProjectionComplete events))
                     (:customer-id (first-of-type :CustomerInviteFailed events)))]
-      (get @db id)
+      (db-lookup db id)
       (println "No id found"))))
+
+(def invite-response
+  (invite-responser #(get %1 %2)))
     
     

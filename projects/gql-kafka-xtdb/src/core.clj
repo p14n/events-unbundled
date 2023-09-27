@@ -9,7 +9,9 @@
             [kafka.producer :as kp]
             [com.kroo.epilogue :as log]
             [kafka.core :as kc]
-            [xt.core :as xt]))
+            [xtdb.core :as xtc]
+            [xtdb.api :as xt]
+            [common.protocol :as prot]))
 
 
 (def schema
@@ -24,13 +26,44 @@
                       :description "Invite a customer"
                       :args {:email {:type String}}}}})
 
+;
+;(xt/entity (xt/db @db) :some-id)
+
+(def invite-customer-xtdb
+  (prot/->Executor
+   (prot/->LookupHandler
+    (fn [{:keys [db]} {:keys [email type]}]
+      (case type
+        :InviteCustomer
+        (let [ex (ffirst (xt/q (xt/db db) {:find '[e] :where [['e :email email]]}))
+              _ (println "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ex" ex)]
+
+          (when ex
+            {:existing-id ex}))))
+    h/invite-customer)))
+
+(def project-customer-xtdb
+  (prot/->Executor
+   (prot/->LookupWriterHandler
+
+    (fn [{:keys [db]} {:keys [customer-id]}]
+      (xt/entity (xt/db db) customer-id))
+
+    p/project-customer
+
+    (fn [{:keys [db event-notify-ch]}
+         {:keys [id] :as entity}]
+      (xt/submit-tx db [[::xt/put (assoc entity :xt/id id)]])
+      (xt/sync db)
+      (event-notify-ch {:type :ProjectionComplete :customer-id id})))))
+
 (defn create-system [handlers resolvers]
   (fn [do-with-state]
     (try (with-open [producer-channels (-> handlers
                                            (c/get-all-channel-names)
                                            (conj :commands :notify)
                                            (kp/create-producer-channels))
-                     db (xt/start-node (xt/node-properties "xtdb"))
+                     db (xtc/start-node "xtdb")
                      command-sender (c/closeable :command-sender (bff/create-command-sender
                                                                   (c/map-command-type-to-resolver resolvers)
                                                                   (-> @producer-channels :channels :commands)))
@@ -45,15 +78,15 @@
                                                             (chan v))
                                                           nil)
                                              :db @db})
-                     system (kc/start-system @st handlers (-> @producer-channels :channels) bff/responder)]
+                     system (kc/start-system @st handlers (-> @producer-channels :channels) bff/responder-executor)]
            (do-with-state @st))
          (catch Throwable e
            (log/error "Error creating system" {} :cause e)))))
 
 (def with-system
-  (create-system [h/invite-customer
-                  p/project-customer-to-simple-db]
-                 [r/invite-response]))
+  (create-system [invite-customer-xtdb
+                  project-customer-xtdb]
+                 [(r/invite-responser #(xt/entity (xt/db %1) %2))]))
 
 (defonce state (atom nil))
 (defonce instance (atom (future ::never-run)))

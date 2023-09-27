@@ -20,7 +20,7 @@
                                             :replication-factor 3}}}))
 
 (defn start-node ^IXtdb [groupid]
-  (cc/closable (keyword (str "xtdb-" groupid))
-               (xt/start-node (node-properties groupid))
-               (fn [db]
-                 (.close db))))
+  (cc/closeable (keyword (str "xtdb-" groupid))
+                (xt/start-node (node-properties groupid))
+                (fn [db]
+                  (.close db))))

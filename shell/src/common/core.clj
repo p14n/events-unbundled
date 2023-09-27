@@ -1,7 +1,6 @@
 (ns common.core
   (:require [com.kroo.epilogue :as log]
-            [common.protocol :as prot]
-            [projectors :as p])
+            [common.protocol :as prot])
   (:import [java.util.concurrent CancellationException]
            [java.lang Thread]
            [java.util UUID]))

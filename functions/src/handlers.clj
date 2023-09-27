@@ -4,20 +4,20 @@
 
 (def invite-customer
   ^{:in [:commands] :out :customer :name :invite-customer-event-handler}
-  (fn [{:keys [notify-ch]}
+  (fn [{:keys [event-notify-ch]}
        {:keys [email type]}
        {:keys [existing-id]}]
     (case type
       :InviteCustomer
       (if (empty? email)
 
-        (notify-ch {:type :error
-                    :message "Email is required"})
+        (event-notify-ch {:type :error
+                          :message "Email is required"})
 
         (if existing-id
-          (notify-ch {:type :CustomerInviteFailed
-                      :customer-id existing-id
-                      :reason "Customer already invited"})
+          (event-notify-ch {:type :CustomerInviteFailed
+                            :customer-id existing-id
+                            :reason "Customer already invited"})
 
           {:event-id (cc/uuid)
            :type :CustomerInvited

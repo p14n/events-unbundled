@@ -13,7 +13,7 @@
 (deftype Executor [^common.protocol.IHandler h]
   IExecute
   (execute [_ ctx event]
-    (let [_ctx (assoc ctx :notify-ch (partial (:notify-ch ctx) event))]
+    (let [_ctx (assoc ctx :event-notify-ch (partial (:notify-ch ctx) event))]
       (->> event
            (lookup h _ctx)
            (transform h _ctx event)

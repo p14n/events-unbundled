@@ -9,8 +9,7 @@
     (let [db (atom {})
           notify-events (atom [])
 
-          _ (->> {:email "dean@p14n.com" :type :InviteCustomer}
-                 (h/invite-customer {:db db})
+          _ (->> (h/invite-customer {:db db} {:email "dean@p14n.com" :type :InviteCustomer} {})
                  (p/project-customer-to-simple-db
                   {:db db
                    :notify-ch #(swap! notify-events conj %2)}))

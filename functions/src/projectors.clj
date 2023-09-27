@@ -23,9 +23,9 @@
 
     project-customer
 
-    (fn [{:keys [db notify-ch]}
+    (fn [{:keys [db event-notify-ch]}
          {:keys [id] :as entity}]
       (swap! db assoc id entity)
-      (notify-ch {:type :ProjectionComplete :customer-id id})))))
+      (event-notify-ch {:type :ProjectionComplete :customer-id id})))))
 
 

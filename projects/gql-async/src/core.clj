@@ -42,13 +42,13 @@
                                                           (a/put! (:notify @channels) (assoc res :res-corr-id (:res-corr-id ev)))
                                                           nil)
                                              :db @db})
-                     system (ac/start-system @st handlers @channels bff/responder)]
+                     system (ac/start-system @st handlers @channels bff/responder-executor)]
            (do-with-state @st))
          (catch Throwable e
            (log/error "Error creating system" {} :cause e)))))
 
 (def with-system
-  (create-system [h/invite-customer
+  (create-system [h/invite-customer-simple-db
                   p/project-customer-to-simple-db]
                  [r/invite-response]))
 

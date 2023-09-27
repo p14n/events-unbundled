@@ -1,12 +1,13 @@
 (ns kafka.core
   (:require [common.core :as cc]
             [kafka.consumer :as kc]
+            [common.protocol :as prot]
             [com.kroo.epilogue :as log]))
 
 (defn wrap-handlers [handlers channels]
   (->> handlers
        (map (fn [handler]
-              (let [ch-name (some-> handler meta :out)]
+              (let [ch-name (some-> handler prot/executor-meta :out)]
                 (if-let [out-ch (channels ch-name)]
                   (cc/wrap-handler handler out-ch ch-name)
                   handler))))
@@ -17,7 +18,7 @@
   (let [wrapped-handlers (wrap-handlers handlers channels)
         system (doall (->> wrapped-handlers
                            (map (fn [handler]
-                                  (when-let [ch-names (some-> handler meta :in)]
+                                  (when-let [ch-names (some-> handler prot/executor-meta :in)]
                                     (kc/attach-handler ctx handler ch-names))))
                            (remove nil?)
                            (concat [(kc/attach-handler ctx responder (keys channels))])))]

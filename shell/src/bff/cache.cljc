@@ -33,7 +33,8 @@
         {:keys [d resolver events]} (get (add-event-to-response-cache id event) id)
         res (or
              (->> events (filter #(= (:type %) :error)) first)
-             (resolver ctx events))
+             (and resolver
+                  (resolver ctx events)))
         _ (log/info "Responser returning" {:result res})]
     (when res
       (d/success! d res)

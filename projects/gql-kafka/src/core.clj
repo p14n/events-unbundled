@@ -44,13 +44,13 @@
                                                             (chan v))
                                                           nil)
                                              :db @db})
-                     system (kc/start-system @st handlers (-> @producer-channels :channels) bff/responder)]
+                     system (kc/start-system @st handlers (-> @producer-channels :channels) bff/responder-executor)]
            (do-with-state @st))
          (catch Throwable e
            (log/error "Error creating system" {} :cause e)))))
 
 (def with-system
-  (create-system [h/invite-customer
+  (create-system [h/invite-customer-simple-db
                   p/project-customer-to-simple-db]
                  [r/invite-response]))
 

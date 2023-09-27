@@ -4,7 +4,8 @@
    [clojure.core.async :as a]
    [kafka.common :as kc]
    [common.core :as cc]
-   [com.kroo.epilogue :as log])
+   [com.kroo.epilogue :as log]
+   [common.protocol :as prot])
   (:import
    (java.time Duration)
    (java.io Closeable)
@@ -34,7 +35,7 @@
                             (log/info (str "Received event:" fname) {}
                                       ;{:handler fname :channel (.topic record) :event event}
                                       )
-                            (handler ctx event)))
+                            (prot/execute handler ctx event)))
                         (catch Throwable e
                           (.printStackTrace e)
                           ;(log/error (str "Error in handler " fname) {:handler fname :channels ch-names} :cause e)

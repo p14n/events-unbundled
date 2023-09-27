@@ -2,7 +2,7 @@
 
 (defprotocol IExecute
   (execute [this ctx event])
-  (meta [this]))
+  (executor-meta [this]))
 
 (defprotocol IHandler
   (lookup [this ctx event])
@@ -10,7 +10,7 @@
   (write [this ctx event])
   (transformer-meta [this]))
 
-(deftype Executor [^IHandler h]
+(deftype Executor [^common.protocol.IHandler h]
   IExecute
   (execute [_ ctx event]
     (let [_ctx (assoc ctx :notify-ch (partial (:notify-ch ctx) event))]
@@ -18,7 +18,7 @@
            (lookup h _ctx)
            (transform h _ctx event)
            (write h _ctx))))
-  (meta [_]
+  (executor-meta [_]
     (transformer-meta h)))
 
 (deftype SimpleHandler [transformer]

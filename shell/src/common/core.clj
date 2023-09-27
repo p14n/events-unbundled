@@ -1,5 +1,7 @@
 (ns common.core
-  (:require [com.kroo.epilogue :as log])
+  (:require [com.kroo.epilogue :as log]
+            [common.protocol :as prot]
+            [projectors :as p])
   (:import [java.util.concurrent CancellationException]
            [java.lang Thread]
            [java.util UUID]))
@@ -40,7 +42,9 @@
               (throw (ex-info "already running" {}))))))
 
 (defn fn-name [f]
-  (if-let [n (some-> f meta :name name)]
+  (if-let [n (if (satisfies? prot/IExecute f)
+               (some-> f prot/executor-meta :name name)
+               (some-> f meta :name name))]
     n
     (str f)))
 
@@ -56,7 +60,7 @@
 
 (defn get-all-channel-names [handlers]
   (->> handlers
-       (map meta)
+       (map prot/executor-meta)
        (map (juxt :in :out))
        flatten
        (remove nil?)
@@ -65,16 +69,16 @@
 (defn wrap-handler [handler ch-func ch-name]
   (let [fname (fn-name handler)
         _ (log/info "Attaching handler to outgoing channel" {:handler fname :channel ch-name})
-        h (fn [ctx event]
+        h (fn [ctx event _]
             (try
               (let [id (:res-corr-id event)
-                    res (handler ctx event)]
+                    res (prot/execute handler ctx event)]
                 (when res
                   (log/info "Sending result to channel" {:handler fname :channel ch-name :result res})
                   (ch-func (assoc res :res-corr-id id))))
               (catch Throwable e
                 (log/error "Error in handler" {:handler fname :channel ch-name :event event} :cause e))))]
-    (with-meta h (meta handler))))
+    (prot/->Executor (prot/->SimpleHandler (with-meta h (prot/executor-meta handler))))))
 
 (defn uuid []
   (str (UUID/randomUUID)))

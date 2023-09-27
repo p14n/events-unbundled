@@ -1,6 +1,7 @@
 (ns async.core
   (:require [clojure.core.async :as a]
             [common.core :as cc]
+            [common.protocol :as prot]
             [com.kroo.epilogue :as log])
   (:import [java.io Closeable]
            [java.lang Throwable]))
@@ -16,7 +17,7 @@
           (let [event (a/<! ch)]
             (when event
               (log/info (str "Received event:" fname) {:handler fname :channel ch-name :event event})
-              (handler ctx event)))
+              (prot/execute handler ctx event)))
           (catch Throwable e
             (log/error (str "Error in handler " fname) {:handler fname :channel ch-name} :cause e)))))
     (cc/closeable (keyword (str ch-name) fname)
@@ -38,7 +39,7 @@
 (defn wrap-handlers [handlers channels]
   (->> handlers
        (map (fn [handler]
-              (let [ch-name (some-> handler meta :out)]
+              (let [ch-name (some-> handler prot/executor-meta :out)]
                 (if-let [out-ch (channels ch-name)]
                   (cc/wrap-handler handler #(a/put! out-ch %) ch-name)
                   handler))))
@@ -47,7 +48,7 @@
 (defn group-by-in [handlers]
   (->> handlers
        (reduce (fn [ac vl]
-                 (->> vl meta :in
+                 (->> vl prot/executor-meta :in
                       (reduce (fn [ac2 vl2]
                                 (update ac2 vl2 #(conj % vl)))
                               ac)))

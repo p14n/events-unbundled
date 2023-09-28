@@ -11,7 +11,9 @@
             [kafka.core :as kc]
             [xtdb.core :as xtc]
             [xtdb.api :as xt]
-            [common.protocol :as prot]))
+            [common.protocol :as prot]
+            [postgres.core :as pg]
+            [next.jdbc :as jdbc]))
 
 
 (def schema
@@ -26,21 +28,29 @@
                       :description "Invite a customer"
                       :args {:email {:type String}}}}})
 
-;
-;(xt/entity (xt/db @db) :some-id)
-
 (def invite-customer-xtdb
   (prot/->Executor
-   (prot/->LookupHandler
-    (fn [{:keys [db]} {:keys [email type]}]
+   (prot/->LookupWriterHandler
+    (fn [{:keys [pg]} {:keys [email type]}]
       (case type
         :InviteCustomer
-        (let [ex (ffirst (xt/q (xt/db db) {:find '[e] :where [['e :email email]]}))
-              _ (println "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ex" ex)]
-
+        (let [ex (some->
+                  pg
+                  (pg/get-connection)
+                  (jdbc/execute-one! ["SELECT id FROM customers WHERE email = ?" email])
+                  :customers/id)]
           (when ex
             {:existing-id ex}))))
-    h/invite-customer)))
+
+    h/invite-customer
+
+    (fn [{:keys [pg]} {:keys [email type customer-id] :as event}]
+      (case type
+        :InviteCustomer
+        (-> pg
+            (pg/get-connection)
+            (jdbc/execute! ["insert into customers (id,email,invited) values (?,?,?)" customer-id email true])))
+      event))))
 
 (def project-customer-xtdb
   (prot/->Executor
@@ -64,12 +74,14 @@
                                            (conj :commands :notify)
                                            (kp/create-producer-channels))
                      db (xtc/start-node "xtdb")
+                     postgres (pg/start-postgres)
                      command-sender (c/closeable :command-sender (bff/create-command-sender
                                                                   (c/map-command-type-to-resolver resolvers)
                                                                   (-> @producer-channels :channels :commands)))
                      http (http/start-server (gql/create-gql-handler schema resolvers @command-sender)
                                              {:port 8080})
-                     st (c/closeable :state {:producer-channels @producer-channels
+                     st (c/closeable :state {:pg postgres
+                                             :producer-channels @producer-channels
                                              :command-sender @command-sender
                                              :http http
                                              :notify-ch (fn [ev res]

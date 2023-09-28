@@ -28,7 +28,7 @@
                       :description "Invite a customer"
                       :args {:email {:type String}}}}})
 
-(def invite-customer-xtdb
+(def invite-customer-postgres
   (prot/->Executor
    (prot/->LookupWriterHandler
     (fn [{:keys [pg]} {:keys [email type]}]
@@ -46,7 +46,7 @@
 
     (fn [{:keys [pg]} {:keys [email type customer-id] :as event}]
       (case type
-        :InviteCustomer
+        :CustomerInvited
         (-> pg
             (pg/get-connection)
             (jdbc/execute! ["insert into customers (id,email,invited) values (?,?,?)" customer-id email true])))
@@ -96,7 +96,7 @@
            (log/error "Error creating system" {} :cause e)))))
 
 (def with-system
-  (create-system [invite-customer-xtdb
+  (create-system [invite-customer-postgres
                   project-customer-xtdb]
                  [(r/invite-responser #(xt/entity (xt/db %1) %2))]))
 

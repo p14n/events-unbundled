@@ -60,6 +60,10 @@ The key business functions will happen in `operate` - this is where the real val
 This describes the input and output channels, and the name, but can hold anything your system needs.
 #### Executor
 ```
+(defprotocol IExecute
+  (execute [this ctx event])
+  (executor-meta [this]))
+  
 (deftype Executor [^common.protocol.IHandler h]
   IExecute
   (execute [_ ctx event]

@@ -13,7 +13,11 @@ I (and I imagine you) have worked at many companies where there is an itch to re
 This presented these companies with a conundrum - re-writing the business logic was perceived as too risky and costly, and its was inconceivable to imagine extracting the essential business logic from the way it interacted with its environment (file system, network, database).  Generally, it just never happens, which causes the company a (usually undetermined) opportunity cost.
 
 When starting a greenfield project you hope to be successful, you will make certain architectural and technology decisions that will ensure its success.  You may well be right, but will you be right in one year when the community moves away from that framework?  In 2 years, when you find a new market for the software that requires hugely increased scalability and worldwide instant response speeds?  Or 5 years, when technology x loses business support contracts?  All architecture is wrong, eventually.
-
+### Structure
+There are 3 folders in this project
+* `functions` holds the essential functions - you expect no change over time
+* `projects` hold the deployable/runnable implemtations of the functions in a particular environment
+* `shell` holds the code that provides the environment to the functions.  It's synonymous with the idea of a 'platform', but I prefer the term [shell](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell); the real value is in your functions, the shell is cattle, not a pet. 
 ### Process
 I started from the premise that in any typical ES/CQRS system there are 4 important processes
 * route handlers (how does a POST to /accounts get interpreted?)

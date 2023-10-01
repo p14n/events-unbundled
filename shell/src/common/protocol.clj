@@ -6,9 +6,9 @@
 
 (defprotocol IHandler
   (lookup [this ctx event])
-  (transform [this ctx event data])
+  (operate [this ctx event data])
   (write [this ctx event])
-  (transformer-meta [this]))
+  (operator-meta [this]))
 
 (deftype Executor [^common.protocol.IHandler h]
   IExecute
@@ -16,34 +16,34 @@
     (let [_ctx (assoc ctx :event-notify-ch (partial (:notify-ch ctx) event))]
       (->> event
            (lookup h _ctx)
-           (transform h _ctx event)
+           (operate h _ctx event)
            (write h _ctx))))
   (executor-meta [_]
-    (transformer-meta h)))
+    (operator-meta h)))
 
-(deftype SimpleHandler [transformer]
+(deftype SimpleHandler [operator]
   IHandler
   (lookup [_ _ _] {})
-  (transform [_ ctx event data]
-    (transformer ctx event data))
+  (operate [_ ctx event data]
+    (operator ctx event data))
   (write [_ _ event] event)
-  (transformer-meta [_] (clojure.core/meta transformer)))
+  (operator-meta [_] (clojure.core/meta operator)))
 
-(deftype LookupHandler [looker-upper transformer]
+(deftype LookupHandler [looker-upper operator]
   IHandler
   (lookup [_ ctx event] (looker-upper ctx event))
-  (transform [_ ctx event data]
-    (transformer ctx event data))
+  (operate [_ ctx event data]
+    (operator ctx event data))
   (write [_ _ event] event)
-  (transformer-meta [_] (clojure.core/meta transformer)))
+  (operator-meta [_] (clojure.core/meta operator)))
 
-(deftype LookupWriterHandler [looker-upper transformer writer]
+(deftype LookupWriterHandler [looker-upper operator writer]
   IHandler
   (lookup [_ ctx event] (looker-upper ctx event))
-  (transform [_ ctx event data]
-    (transformer ctx event data))
+  (operate [_ ctx event data]
+    (operator ctx event data))
   (write [_ ctx event] (writer ctx event))
-  (transformer-meta [_] (clojure.core/meta transformer)))
+  (operator-meta [_] (clojure.core/meta operator)))
 
 ;db writers
 ;write k,v (namespace key?) {:id :cust/423}

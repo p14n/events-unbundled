@@ -35,8 +35,7 @@
     (fn [{:keys [db]} {:keys [email type]}]
       (case type
         :InviteCustomer
-        (let [ex (ffirst (xt/q (xt/db db) {:find '[e] :where [['e :email email]]}))
-              _ (println "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ex" ex)]
+        (let [ex (ffirst (xt/q (xt/db db) {:find '[e] :where [['e :email email]]}))]
 
           (when ex
             {:existing-id ex}))))

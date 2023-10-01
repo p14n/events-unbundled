@@ -1,1 +1,1 @@
-Instead of using core.async we're now attaching to kafka.  Plenty has changed in the shell, but from an application POV, its extremely similar.
+Instead of using core.async we're now attaching to kafka.  Plenty has changed in the shell, but from an application POV, its [extremely similar](src/core.clj).

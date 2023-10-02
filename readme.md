@@ -63,7 +63,7 @@ This describes the input and output channels, and the name, but can hold anythin
 (defprotocol IExecute
   (execute [this ctx event])
   (executor-meta [this]))
-  
+
 (deftype Executor [^common.protocol.IHandler h]
   IExecute
   (execute [_ ctx event]
@@ -76,6 +76,36 @@ This describes the input and output channels, and the name, but can hold anythin
     (operator-meta h)))
 ```
 The executor simply takes the handler and executes its functions.  The structure of this component is not particularly important except for one feature - it orchestrates the operation of the handler.  This might mean logging, transaction handling, or even running many handlers in a thread pool.  This abstraction gives us complete control over the way our handlers are implemented.
+
+### Running
+All graphql projects can be started from the repl
+```
+projects/gql-kafka-datomic >> clojure -Mrebel
+[Rebel readline] Type :repl/help for online help info
+user=> (load-file "src/core.clj")
+WARNING: requiring-resolve already refers to: #'clojure.core/requiring-resolve in namespace: datomic.common, being replaced by: #'datomic.common/requiring-resolve
+#'core/stop
+user=> (core/start)
+```
+and you can use a graphql client to test the service
+```
+POST http://localhost:8080/
+
+mutation {
+  InviteCustomer(email:"hello@you.com"){
+    id
+    invited
+  }
+}
+```
+```
+{
+  "InviteCustomer": {
+    "id": "eba0b615-3b90-4597-b32c-2a70a0f1bd7f",
+    "invited": true
+  }
+}
+```
 
 ### Omissions
 This is a toy project, so there are some things I haven't implemented, which would be important in a production system

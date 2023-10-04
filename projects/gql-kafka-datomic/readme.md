@@ -5,7 +5,7 @@ Pros
 * We almost keep the historical view of data
 * graphqlqueries -> datalog queries can be codified, so you don't need a projector anymore (I didn't need one here anyway because `(pull [*])` worked, but you won't need to write bespoke ones anyway)
 * We keep the refential interity of postgres
-* The data the `operator` writes can be used in queries by a responder/other services without needing to operate on the same shape of data (ie datomic is a graph db, not a document db) 
+* The data the `operator` writes can be used in queries by a resolver/other services without needing to operate on the same shape of data (ie datomic is a graph db, not a document db) 
 
 Cons
 * We lose the true view of history (it's based on system time, not business time, which is important if data has been amended)

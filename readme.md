@@ -23,7 +23,26 @@ I started from the premise that in any typical ES/CQRS system there are 4 import
 * route handlers (how does a POST to /accounts get interpreted?)
 * event handlers (the essential logic of the system)
 * projectors (given the changes to the system, what does that look like to the outside world?)
-* responders (how do we tie a request to a response?)
+* resolvers (how do we tie a request to a response?)
+In the view below, route handlers and resolvers are deployed in the bff (backend for frontend)
+```mermaid
+sequenceDiagram
+    participant client
+    participant bff
+    participant datastore
+    participant projector
+    participant event-system
+    participant handler
+    client->>bff: client request
+    bff->>event-system: publish command
+    event-system->>handler: command received
+    handler->>event-system: event published
+    event-system->>projector: event received
+    projector->>datastore: update resolver view
+    projector->>bff: update resolver
+    bff->>client: respond to client
+
+```
 
 I took a very simple business process (invite a customer by email) and wrote the functions to perform each of these (I cheated and skipped the first one as I'll explain later).  You can see them [here](functions/src).  My goal was to attempt a number of different projects (ie deployments of the same code with different tech) while changing these functions as little as possible, so by the time I was done, I would be confident I had a good pattern to allow an [evolutionary architecture](https://www.thoughtworks.com/en-gb/insights/books/building-evolutionary-architectures). The projects are:
 

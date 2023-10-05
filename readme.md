@@ -1,9 +1,15 @@
 ### Purpose
 
-This repo explores a pattern for writing an event driven CQRS system that can 
-* be used in a small system 
+This repo explores a pattern for writing an event-driven CQRS system that 
+* can be used in a small monolithic system or large distributed app
 * separates the essential complexity (your business logic) from the accidental complexity (how the code is deployed and run) (see [Out of the tarpit](https://curtclifton.net/papers/MoseleyMarks06a.pdf))
-
+### Why?
+The benefits of decoupling your feature code from the operational shell around it are many
+* Trying out new architectures quickly and safely
+* Evolving your architecture quickly and safely
+* Changing the deployment architecture becomes trivial (for example, grouping rarely accessed processes together in a single deployable unit)
+* Using different technologies for different services
+* Running your entire application stack in memory for fast, reliable tests with no infrastructure setup
 ### Background
 
 I (and I imagine you) have worked at many companies where there is an itch to re-write *that* system.  This itch may come from a need to scale the system, make it easier to work with, evolve away from deprecated or outdated tech, or, possibly, there is a new technology the company feels may help improve its operations in some way.  This itch *only ever* applies to successful software, and succesful software generally 
@@ -16,7 +22,7 @@ When starting a greenfield project you hope to be successful, you will make cert
 ### Structure
 There are 3 folders in this project
 * `functions` holds the essential functions - you expect no change over time
-* `projects` hold the deployable/runnable implemtations of the functions in a particular environment
+* `projects` hold the deployable/runnable implementations of the functions in a particular environment
 * `shell` holds the code that provides the environment to the functions.  It's synonymous with the idea of a 'platform', but I prefer the term [shell](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell); the real value is in your functions, the shell is cattle, not a pet. 
 ### Process
 I started from the premise that in any typical ES/CQRS system there are 4 important processes

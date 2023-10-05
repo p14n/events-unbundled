@@ -7,7 +7,7 @@ This project is the first time we're changing the lookup and write functions.  W
 ```
 Pros:
 * We now have massive read-scale for our external data
-* We've solved a common problem in ES systems; xtdb is bitemporal, which means you can read the state of the world at any given time in the past.  When a new service/component is added to the system, it can read the first be event and ask xtdb "what was the state of the world when this event happened" and boostrap its own datastore (instead of running through *all* events from the beginning)
+* We've solved a common problem in ES systems; xtdb is bitemporal, which means you can read the state of the world at any given time in the past.  When a new service/component is added to the system, it can read the first be event and ask xtdb "what was the state of the world when this event happened" and bootstrap its own datastore (instead of running through *all* events from the beginning)
 
 Cons:
 * We don't have real data integrity.  We could introduce this with a transaction function, but even then we wouldn't have *referential* data integrity

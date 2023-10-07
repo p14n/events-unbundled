@@ -55,7 +55,7 @@ I took a very simple business process (invite a customer by email) and wrote the
 * [A simple implementation](projects/basic-async/) - no http interface and using [core.async](https://github.com/clojure/core.async) to provide the event system.
 * [Introducing graphql](projects/gql-async/) - this is my 'cheat' - since graphql mutations map 1:1 with commands, I could define my route handler with a graphql schema.  A similar thing could be done with REST, but graphql gave me the fastest way to route handling/validation.
 * [Introducing kafka](projects/gql-kafka/) - if we want to scale, these functions could be deployed on separate machines, so I'm using confluent cloud to demonstrate this
-* [Introducing xtdb](projects/gql-kafka-xtdb/) - we scaled our processes, but not our data.  Using xtbd allows us to provide incredible read scale, on top of the kafka we're already using.
+* [Introducing xtdb](projects/gql-kafka-xtdb/) - we scaled our processes, but not our data.  Using xtdb allows us to provide incredible read scale, on top of the kafka we're already using.
 * [Introducing postgres](projects/gql-kafka-xtdb-postgres/) - While xtdb is great for providing reads downstream, it leaves us with an important gap; referential integrity.  Postgres would allow us to perform multiple checks on our data (including UPDATE... WHERE...), meaning we don't accept an event into the system unless we're really sure it's valid.
 * [Introducing datomic](projects/gql-kafka-datomic/) - I'm a datomic fan, and while it has some downsides (single write with unclear max throughput, hard limit on db size) it has some wonderful characteristics that are worth exploring
 

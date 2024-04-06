@@ -1,5 +1,6 @@
 {:deps
  {functions {:local/root "../../functions"}
+  simple-db {:local/root "../simple-db"}
   shell {:local/root "../../shell"}
   org.clojure/core.async {:mvn/version "1.6.681"}
   ch.qos.logback/logback-classic {:mvn/version "1.4.8"}

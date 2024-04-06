@@ -1,11 +1,9 @@
 (ns core
   (:require [async.core :as ac]
             [clojure.core.async :as a]
-            [handlers :as h]
-            [projectors :as p]
-            [resolvers :as r]
             [common.core :as c]
-            [bff.cache :as bff]))
+            [bff.cache :as bff]
+            [simple-db.core :as sdb]))
 
 
 (defn create-system [handlers resolvers]
@@ -26,9 +24,9 @@
       (do-with-state @st))))
 
 (def with-system
-  (create-system [h/invite-customer-simple-db
-                  p/project-customer-to-simple-db]
-                 [r/invite-response]))
+  (create-system [sdb/invite-customer-simple-db
+                  sdb/project-customer-to-simple-db]
+                 [sdb/invite-response]))
 
 (def state (atom nil))
 (defonce instance (atom (future ::never-run)))

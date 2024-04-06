@@ -1,6 +1,6 @@
 {:deps
- {functions {:local/root "../../functions"}
-  shell {:local/root "../../components/shell"}
+ {functions/functions {:local/root "../../functions"}
+  shell/shell {:local/root "../../components/shell"}
   org.clojure/core.async {:mvn/version "1.6.681"}
   ch.qos.logback/logback-classic {:mvn/version "1.4.8"}
   com.kroo/typeset.logback       {:mvn/version "0.2"}}}

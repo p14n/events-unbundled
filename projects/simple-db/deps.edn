@@ -1,5 +1,5 @@
-{:deps {shell {:local/root "../../components/shell"}
-        functions {:local/root "../../functions"}}
+{:deps {shell/shell {:local/root "../../components/shell"}
+        functions/functions {:local/root "../../functions"}}
  :paths ["src" "test"]
  :aliases {:kaocha {:extra-paths ["test"]
                     :main-opts ["-m" "kaocha.runner"]

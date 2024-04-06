@@ -1,9 +1,9 @@
 {:deps
- {common {:local/root "../../components/common"}
-  common-clj {:local/root "../../components/common-clj"}
-  functions {:local/root "../../functions"}
-  simple-db {:local/root "../simple-db"}
-  shell {:local/root "../../components/shell"}
+ {common/common {:local/root "../../components/common"}
+  common-clj/common-clj {:local/root "../../components/common-clj"}
+  functions/functions {:local/root "../../functions"}
+  simple-db/simple-db {:local/root "../simple-db"}
+  shell/shell {:local/root "../../components/shell"}
   org.clojure/core.async {:mvn/version "1.6.681"}
   ch.qos.logback/logback-classic {:mvn/version "1.4.8"}
   com.kroo/typeset.logback       {:mvn/version "0.2"}}

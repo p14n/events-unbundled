@@ -26,4 +26,4 @@ We can see a number of things happening here
      
 The system uses core async to send events between components.  There is no http interface - usage can be seen in the [test](test/basic_async_test.clj).
 
-Of note is the [responder cache](../../shell/src/bff/cache.cljc).  It's job is simply to correlate the events written to the system and match the request to the correct responder (or the caller would never get a response).
+Of note is the [responder cache](../../components/shell/src/bff/cache.cljc).  It's job is simply to correlate the events written to the system and match the request to the correct responder (or the caller would never get a response).

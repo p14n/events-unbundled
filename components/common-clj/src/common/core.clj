@@ -2,8 +2,7 @@
   (:require [com.kroo.epilogue :as log]
             [common.protocol :as prot])
   (:import [java.util.concurrent CancellationException]
-           [java.lang Thread]
-           [java.util UUID]))
+           [java.lang Thread]))
 
 (defn closeable
   ([name value] (closeable name value identity))
@@ -47,11 +46,6 @@
     n
     (str f)))
 
-(defn first-of-type [type events]
-  (some->> events
-           (filter #(= (:type %) type))
-           (first)))
-
 (defn map-command-type-to-resolver [resolvers]
   (->> resolvers
        (map #(do [(-> % meta :type) %]))
@@ -79,5 +73,3 @@
                 (log/error "Error in handler" {:handler fname :channel ch-name :event event} :cause e))))]
     (prot/->Executor (prot/->SimpleHandler (with-meta h (prot/executor-meta handler))))))
 
-(defn uuid []
-  (str (UUID/randomUUID)))

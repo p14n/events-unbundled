@@ -1,5 +1,5 @@
 (ns resolvers
-  (:require [common.core :refer [first-of-type]]))
+  (:require [common.base.core :refer [first-of-type]]))
 
 (defn invite-responser [db-lookup]
   ^{:type :InviteCustomer}

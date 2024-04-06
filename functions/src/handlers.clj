@@ -1,5 +1,5 @@
 (ns handlers
-  (:require [common.core :as cc]))
+  (:require [common.base.core :as cc]))
 
 (def invite-customer
   ^{:in [:commands] :out :customer :name :invite-customer-event-handler}

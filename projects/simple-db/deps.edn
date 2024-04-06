@@ -1,4 +1,4 @@
-{:deps {shell {:local/root "../../shell"}
+{:deps {shell {:local/root "../../components/shell"}
         functions {:local/root "../../functions"}}
  :paths ["src" "test"]
  :aliases {:kaocha {:extra-paths ["test"]

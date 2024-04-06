@@ -1,6 +1,5 @@
 (ns handlers
-  (:require [common.core :as cc]
-            [common.protocol :as prot]))
+  (:require [common.base.core :as cc]))
 
 (def invite-customer
   ^{:in [:commands] :out :customer :name :invite-customer-event-handler}
@@ -24,13 +23,3 @@
            :customer-id (cc/uuid)
            :email email}))
       nil)))
-
-(def invite-customer-simple-db
-  (prot/->Executor
-   (prot/->LookupHandler
-    (fn [{:keys [db]} {:keys [email type]}]
-      (case type
-        :InviteCustomer
-        {:existing-id (some->> @db vals (filter #(-> % :email (= email))) first :id)}))
-    invite-customer)))
-  

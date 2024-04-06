@@ -1,11 +1,12 @@
 {:deps
- {functions {:local/root "../../functions"}
-  shell {:local/root "../../shell"}
+ {functions/functions {:local/root "../../functions"}
+  shell/shell {:local/root "../../components/shell"}
+  simple-db/simple-db {:local/root "../simple-db"}
   org.clojure/core.async {:mvn/version "1.6.681"}
   ch.qos.logback/logback-classic {:mvn/version "1.4.8"}
   com.kroo/typeset.logback       {:mvn/version "0.2"}}
 
  :aliases {:test     {:extra-paths ["test"]
                       :main-opts ["-m" "kaocha.runner"]
-                      :extra-deps  {test-shared {:local/root "../test-shared"}}}}}
+                      :extra-deps  {test-shared/test-shared {:local/root "../test-shared"}}}}}
 

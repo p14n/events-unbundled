@@ -1,9 +1,7 @@
 (ns core
   (:require [async.core :as ac]
             [clojure.core.async :as a]
-            [handlers :as h]
-            [projectors :as p]
-            [resolvers :as r]
+            [simple-db.core :as sdb]
             [common.core :as c]
             [bff.cache :as bff]
             [aleph.http :as http]
@@ -48,9 +46,9 @@
            (log/error "Error creating system" {} :cause e)))))
 
 (def with-system
-  (create-system [h/invite-customer-simple-db
-                  p/project-customer-to-simple-db]
-                 [r/invite-response]))
+  (create-system [sdb/invite-customer-simple-db
+                  sdb/project-customer-to-simple-db]
+                 [sdb/invite-response]))
 
 (defonce state (atom nil))
 (defonce instance (atom (future ::never-run)))

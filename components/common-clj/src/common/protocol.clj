@@ -1,16 +1,16 @@
-(ns common.protocol)
+(ns common.protocol
+  (:require [common.base.protocol :as p]))
 
-(defprotocol IExecute
-  (execute [this ctx event])
-  (executor-meta [this]))
+(def IExecute p/IExecute)
+(def IHandler p/IHandler)
+(def write p/write)
+(def operate p/operate)
+(def lookup p/lookup)
+(def operator-meta p/operator-meta)
+(def executor-meta p/executor-meta)
+(def execute p/execute)
 
-(defprotocol IHandler
-  (lookup [this ctx event])
-  (operate [this ctx event data])
-  (write [this ctx event])
-  (operator-meta [this]))
-
-(deftype Executor [^common.protocol.IHandler h]
+(deftype Executor [h]
   IExecute
   (execute [_ ctx event]
     (let [_ctx (assoc ctx :event-notify-ch (partial (:notify-ch ctx) event))]

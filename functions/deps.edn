@@ -1,7 +1,7 @@
-{:deps {shell {:local/root "../shell"}}
+{:deps {shell/shell {:local/root "../components/common"}}
  :paths ["src" "test"]
- :aliases {:kaocha {:extra-paths ["test"]
-                    :main-opts ["-m" "kaocha.runner"]
-                    :extra-deps {lambdaisland/kaocha {:mvn/version "1.82.1306"}
-                                 freeport/freeport {:mvn/version "1.0.0"}
-                                 tortue/spy {:mvn/version "2.0.0"}}}}}
+ :aliases {:test {:extra-paths ["test"]
+                  :main-opts ["-m" "kaocha.runner"]
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "1.82.1306"}
+                               freeport/freeport {:mvn/version "1.0.0"}
+                               tortue/spy {:mvn/version "2.0.0"}}}}}

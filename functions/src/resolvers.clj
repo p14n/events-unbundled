@@ -1,6 +1,5 @@
 (ns resolvers
-  (:require [common.core :refer [first-of-type]]))
-
+  (:require [common.base.core :refer [first-of-type]]))
 
 (defn invite-responser [db-lookup]
   ^{:type :InviteCustomer}
@@ -10,8 +9,3 @@
                     (:customer-id (first-of-type :CustomerInviteFailed events)))]
       (db-lookup db id)
       (println "No id found"))))
-
-(def invite-response
-  (invite-responser #(get %1 %2)))
-    
-    

@@ -16,13 +16,13 @@ jobs:
       - name: Prepare java
         uses: actions/setup-java@v3
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '11'
 
       - name: Install clojure tools
         uses: DeLaGuardo/setup-clojure@12.5
         with:
-          cli: 1.10.1.693              # Clojure CLI based on tools.deps
+          cli: 1.11.1.1435              # Clojure CLI based on tools.deps
           
       - name: Checkout 
         uses: actions/checkout@v3

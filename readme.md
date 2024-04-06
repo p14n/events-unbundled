@@ -23,7 +23,7 @@ When starting a greenfield project you hope to be successful, you will make cert
 There are 3 folders in this project
 * `functions` holds the essential functions - you expect no change over time
 * `projects` hold the deployable/runnable implementations of the functions in a particular environment
-* `shell` holds the code that provides the environment to the functions.  It's synonymous with the idea of a 'platform', but I prefer the term [shell](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell); the real value is in your functions, the shell is cattle, not a pet. 
+* `components` holds the code that provides the environment to the functions.  The code has been split up to allow cross-platform development, but the main code is in `shell`.  It's synonymous with the idea of a 'platform', but I prefer the term [shell](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell); the real value is in your functions, the shell is cattle, not a pet. 
 ### Process
 I started from the premise that in any typical ES/CQRS system there are 4 important processes
 * route handlers (how does a POST to /accounts get interpreted?)
@@ -62,7 +62,7 @@ I took a very simple business process (invite a customer by email) and wrote the
 Note there is also a 'fifth project' in the [unit test](functions/test/core_test.clj) of the functions.  This is really important; the essential logic can be tested very simply and very quickly.
 
 ### The pattern
-The pattern has been codified as [protocols](shell/src/common/protocol.clj), but this will translate to any language.  I'm calling this the LOW pattern - lookup, operate, write.
+The pattern has been codified as [protocols](components/common/src/common/base/protocol.cljc) (with implementations as [types](components/common-clj/src/common/protocol.clj)), but this will translate to any language.  I'm calling this the LOW pattern - lookup, operate, write.
 #### Handler
 ```
 (defprotocol IHandler

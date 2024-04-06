@@ -6,3 +6,6 @@
 **/.cpcache
 **/.calva
 **/target
+**/.nbb
+**/node_modules
+**/.DS_Store

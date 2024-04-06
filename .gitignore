@@ -9,3 +9,5 @@
 **/.nbb
 **/node_modules
 **/.DS_Store
+**/.terraform
+**/transient.tf.json

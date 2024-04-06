@@ -1,6 +1,4 @@
-(ns shell
-  (:require [handlers :as h]
-            [lookups :as l]))
+(ns shell)
 
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]
@@ -26,6 +24,5 @@
 (defn create-lookup-writer-handler [handler-func lookup-func writer-func]
   (create-handler handler-func lookup-func writer-func))
 
-#js {:inviteCustomer (create-lookup-writer-handler h/invite-customer l/invite-customer-lookup nil)}
 
 

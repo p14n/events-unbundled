@@ -38,7 +38,7 @@ jobs:
           restore-keys: cljdeps-      
 
       - name: Function test
-        run: clojure -Mkaocha
+        run: clojure -Mtest
         working-directory: ./functions
       - name: Basic async test
         run: clojure -Mtest

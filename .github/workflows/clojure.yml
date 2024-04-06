@@ -1,0 +1,24 @@
+name: Clojure CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Function test
+      run: clojure -Mkaocha
+      working-directory: ./functions
+    - name: Basic async test
+      run: clojure -Mtest
+      working-directory: ./projects/basic-async
+    - name: Graphql async test
+      run: clojure -Mtest --config-file ../test-shared/tests.edn --reporter kaocha.report/documentation features
+      working-directory: ./projects/gql-async

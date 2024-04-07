@@ -70,7 +70,12 @@
                                                  "source" "${module.dynamodb_table_events.dynamodb_table_stream_arn}",
                                                  "source_parameters" [{"dynamodb_stream_parameters" [{"batch_size" 1,
                                                                                                       "starting_position" "LATEST"}]}],
-                                                 "target" "${module.eventbridge.eventbridge_bus_arn}"}]}}
+                                                 "target" "${module.eventbridge.eventbridge_bus_arn}"
+                                                 "target_parameters" {"input_template" (json/generate-string {"id" "<$.dynamodb.NewImage.id.S>",
+                                                                                                              "topic" "<$.dynamodb.NewImage.topic.S>",
+                                                                                                              "type" "<$.dynamodb.NewImage.type.S>",
+                                                                                                              "created" "<$.dynamodb.NewImage.created.S>",
+                                                                                                              "body" "<$.dynamodb.NewImage.body.S>"})}}]}}
    "provider" {"aws" [{"default_tags" [{"tags" {"Component" "aws-serverless"}}]
                        "region" "eu-west-1"}]}
 

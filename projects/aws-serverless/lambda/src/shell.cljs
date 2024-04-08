@@ -4,8 +4,12 @@
 (defn event-notify-ch [e]
   (some-> e clj->js js/console.log))
 
+
+(defn handler-name [handler]
+  (-> handler meta :name name (str/replace "-" "") (str/replace "_" "")))
+
 (defn handler-name-kw [handler]
-  (-> handler meta :name name (str/replace "-" "") (str/replace "_" "") keyword))
+  (-> handler handler-name keyword))
 
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]

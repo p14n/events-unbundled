@@ -2,6 +2,11 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]))
 
+(defn assoc-if [m k v]
+  (if (and m k v)
+    (assoc m k v)
+    m))
+
 
 (defn rule-name [topic]
   (str topic "_events"))
@@ -87,24 +92,39 @@
                (mapv (partial synth-lambda-target (rule-name topic)) handlers)]))
        (into {})))
 
+
+(defn create-dynamodb-table
+  ([table-name attributes streaming hash]
+   (create-dynamodb-table table-name attributes streaming hash nil))
+  ([table-name attributes streaming hash range]
+   (-> {"attributes" (->> attributes
+                          (mapv (fn [[k v]] {"name" k, "type" v}))) ,
+        "hash_key" hash,
+        "name" table-name,
+        "source" "terraform-aws-modules/dynamodb-table/aws"}
+       (assoc-if "range_key" range)
+       (assoc-if "stream_enabled" (when streaming true))
+       (assoc-if "stream_view_type" streaming))))
+
+
+(defn create-dynamodb-tables []
+  {"dynamodb_table_events" (create-dynamodb-table
+                            "events"
+                            {"event-id" "S" "created" "S"}
+                            "NEW_IMAGE" "event-id" "created")})
+
+
 (defn synth
   ([hs]
    (let [handlers (handler-metas hs)
          grouped-by-topic (group-by-topic handlers)]
-     {"module" (merge
-                {"dynamodb_table_events" [{"attributes" [{"name" "event-id", "type" "S"}
-                                                         {"name" "created", "type" "S"}],
-                                           "hash_key" "event-id",
-                                           "range_key" "created"
-                                           "name" "events",
-                                           "stream_enabled" true
-                                           "stream_view_type" "NEW_IMAGE"
-                                           "source" "terraform-aws-modules/dynamodb-table/aws"}]
-                 "eventbridge" [{"bus_name" "eventbridge-producer-events",
-                                 "rules" (create-rules grouped-by-topic)
-                                 "targets" (create-targets grouped-by-topic)
-                                 "source" "terraform-aws-modules/eventbridge/aws"}]}
-                (into {} (map synth-lambda (map :flat-name handlers))))
+     {"module" (apply merge
+                      [(create-dynamodb-tables)
+                       {"eventbridge" [{"bus_name" "eventbridge-producer-events",
+                                        "rules" (create-rules grouped-by-topic)
+                                        "targets" (create-targets grouped-by-topic)
+                                        "source" "terraform-aws-modules/eventbridge/aws"}]}
+                       (into {} (map synth-lambda (map :flat-name handlers)))])
       "resource" {"aws_iam_policy" {"pipe_policy" [{"name" "pipe-policy",
                                                     "policy" (json/generate-string pipe-policy)}]},
                   "aws_iam_role" {"pipe_role" [{"assume_role_policy" (json/generate-string pipe-role-policy)

@@ -9,7 +9,8 @@
 
 
   synth {:doc "Creates terraform"
-         :task (->> (inf/synth lh/all) (json/generate-string) (spit "transient.tf.json"))}
+         :task (->> (json/generate-string (inf/synth lh/all) {:pretty true})
+                    (spit "transient.tf.json"))}
   zip-lambda {:doc "Zips lambda"
               :task (shell {:dir "../lambda"} "zip -FSr lambda.zip .")}
 

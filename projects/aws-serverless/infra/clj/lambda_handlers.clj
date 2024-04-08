@@ -2,4 +2,4 @@
   (:require [handlers :as h]
             [projectors :as p]))
 
-(def all [h/invite-customer])
+(def all [h/invite-customer p/project-customer])

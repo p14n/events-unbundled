@@ -11,6 +11,37 @@
 (defn rule-name [topic]
   (str topic "_events"))
 
+(defn table-policy [table-name]
+  {"Version" "2012-10-17",
+   "Statement" [{"Sid" "DynamoDBIndexAndStreamAccess",
+                 "Effect" "Allow",
+                 "Action" ["dynamodb:GetShardIterator",
+                           "dynamodb:Scan",
+                           "dynamodb:Query",
+                           "dynamodb:DescribeStream",
+                           "dynamodb:GetRecords",
+                           "dynamodb:ListStreams"],
+                 "Resource" [(str "arn:aws:dynamodb:*:*:table/" table-name "/index/*")
+                             (str "arn:aws:dynamodb:*:*:table/" table-name "/stream/*")]},
+                {"Sid" "DynamoDBTableAccess",
+                 "Effect" "Allow",
+                 "Action" ["dynamodb:BatchGetItem",
+                           "dynamodb:BatchWriteItem",
+                           "dynamodb:ConditionCheckItem",
+                           "dynamodb:PutItem",
+                           "dynamodb:DescribeTable",
+                           "dynamodb:DeleteItem",
+                           "dynamodb:GetItem",
+                           "dynamodb:Scan",
+                           "dynamodb:Query",
+                           "dynamodb:UpdateItem"],
+                 "Resource" (str "arn:aws:dynamodb:*:*:table/" table-name)},
+                {"Sid" "DynamoDBDescribeLimitsAccess",
+                 "Effect" "Allow",
+                 "Action" "dynamodb:DescribeLimits",
+                 "Resource" [(str "arn:aws:dynamodb:*:*:table/" table-name),
+                             (str "arn:aws:dynamodb:*:*:table/" table-name "/index/*")]}]})
+
 (def pipe-policy
   {"Version" "2012-10-17"
    "Statement" [{"Action" ["dynamodb:DescribeStream"
@@ -107,31 +138,62 @@
        (assoc-if "stream_view_type" streaming))))
 
 
+
+(defn- ddb-handler-policy-attachments [table-name all-handler-names]
+  (->> all-handler-names
+       (map (fn [handler-name]
+              [(str "ddb_" table-name "_pa_" handler-name)
+               [{"policy_arn" (str "${aws_iam_policy.ddb_" table-name "_policy.arn}"),
+                 "role" (str "${module.lambda_function_" handler-name ".lambda_role_name}")}]]))
+       (into {})))
+
+(defn ddb-policies [table-names]
+  (->> table-names
+       (map (fn [table-name]
+              [(str "ddb_" table-name "_policy")
+               [{"name" (str "ddb_" table-name "_policy"),
+                 "policy" (json/generate-string (table-policy table-name))}]]))
+       (into {})))
+
 (defn create-dynamodb-tables []
   {"dynamodb_table_events" (create-dynamodb-table
                             "events"
                             {"event-id" "S" "created" "S"}
-                            "NEW_IMAGE" "event-id" "created")})
+                            "NEW_IMAGE" "event-id" "created")
+   "dynamodb_table_customer_emails" (create-dynamodb-table
+                                     "customer_emails"
+                                     {"email" "S"}
+                                     nil "email")
+   "dynamodb_table_customers" (create-dynamodb-table
+                               "customers"
+                               {"id" "S"}
+                               nil "id")})
 
 
 (defn synth
   ([hs]
    (let [handlers (handler-metas hs)
-         grouped-by-topic (group-by-topic handlers)]
+         grouped-by-topic (group-by-topic handlers)
+         all-handler-names (map :flat-name handlers)]
      {"module" (apply merge
                       [(create-dynamodb-tables)
                        {"eventbridge" [{"bus_name" "eventbridge-producer-events",
                                         "rules" (create-rules grouped-by-topic)
                                         "targets" (create-targets grouped-by-topic)
                                         "source" "terraform-aws-modules/eventbridge/aws"}]}
-                       (into {} (map synth-lambda (map :flat-name handlers)))])
-      "resource" {"aws_iam_policy" {"pipe_policy" [{"name" "pipe-policy",
-                                                    "policy" (json/generate-string pipe-policy)}]},
+                       (into {} (map synth-lambda all-handler-names))])
+      "resource" {"aws_iam_policy" (merge {"pipe_policy" [{"name" "pipe-policy",
+                                                           "policy" (json/generate-string pipe-policy)}]}
+                                          (ddb-policies ["events" "customer_emails" "customers"])),
                   "aws_iam_role" {"pipe_role" [{"assume_role_policy" (json/generate-string pipe-role-policy)
                                                 "description" "Role for pipe",
                                                 "name" "pipe-role"}]},
-                  "aws_iam_role_policy_attachment" {"pipe_policy_attachment" [{"policy_arn" "${aws_iam_policy.pipe_policy.arn}",
-                                                                               "role" "${aws_iam_role.pipe_role.name}"}]},
+                  "aws_iam_role_policy_attachment" (apply merge
+                                                          [{"pipe_policy_attachment" [{"policy_arn" "${aws_iam_policy.pipe_policy.arn}",
+                                                                                       "role" "${aws_iam_role.pipe_role.name}"}]}
+                                                           (ddb-handler-policy-attachments "events" all-handler-names)
+                                                           (ddb-handler-policy-attachments "customer_emails" ["invitecustomereventhandler"])
+                                                           (ddb-handler-policy-attachments "customers" ["customerprojector"])]),
                   "aws_lambda_permission" (synth-lambda-rule-permissions grouped-by-topic),
                   "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
                                                     "role_arn" "${aws_iam_role.pipe_role.arn}",

@@ -40,26 +40,29 @@
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]
     (js/console.log "Event received " e)
-    (let [ctx {:event-notify-ch event-notify-ch}
-          out-topic (handler-topic handler-func)
-          client (ddb/create-client)
-          event (transalate-event e)
-          lookup-data (if lookup-func (lookup-func ctx event) {})
-          result (assoc-if (handler-func ctx event lookup-data)
-                           :correlation-id
-                           (when out-topic (:correlation-id event)))
-          table-requests (->> [(when writer-func (writer-func ctx result))
-                               (when (and result out-topic)
-                                 (ddb/create-table-request "events" [(ddb/create-event-record result out-topic)]))]
-                              (remove nil?)
-                              (vec))
-          _ (js/console.log "Result " (pr-str result))
-          _ (js/console.log "Table requests " (pr-str table-requests))]
-      (if (seq table-requests)
-        (p/let [write-response (ddb/write-all-table-requests client table-requests)]
-          (event-notify-ch result)
-          (http-response 200 result))
-        (http-response 200 result)))))
+    (p/let [client (ddb/create-client)
+            ctx {:event-notify-ch event-notify-ch :db client}
+            out-topic (handler-topic handler-func)
+            event (transalate-event e)
+
+            lookup-data (if lookup-func (lookup-func ctx event) {})
+            _ (js/console.log "Lookup " (pr-str lookup-data))
+
+            result (assoc-if (handler-func ctx event lookup-data)
+                             :correlation-id
+                             (when out-topic (:correlation-id event)))
+            table-requests (->> [(when writer-func (writer-func ctx result))
+                                 (when (and result out-topic)
+                                   (ddb/create-table-request "events" [(ddb/create-event-record result out-topic)]))]
+                                (remove nil?)
+                                (vec))
+            _ (js/console.log "Result " (pr-str result))
+            _ (js/console.log "Table requests " (pr-str table-requests))
+            write-response (when (seq table-requests)
+                             (ddb/write-all-table-requests client table-requests))
+            _ (js/console.log "Write response " (pr-str write-response))]
+      (event-notify-ch result)
+      (http-response 200 result))))
 
 ;; (defn create-simple-handler [handler-func]
 ;;   (create-handler handler-func nil nil))

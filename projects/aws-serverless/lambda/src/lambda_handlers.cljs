@@ -1,4 +1,4 @@
-(ns lambdas
+(ns lambda-handlers
   (:require [handlers :as h]
             [lookups :as l]
             [shell :as s]))

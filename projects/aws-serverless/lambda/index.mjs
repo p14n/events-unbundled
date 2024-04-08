@@ -1,7 +1,7 @@
 import { loadFile, addClassPath } from 'nbb';
 
-addClassPath('src'); // This is necessary when you require another .cljs file
+addClassPath('src');
 
-const x = await loadFile('src/lambdas.cljs');
+const x = await loadFile('src/lambdas_handlers.cljs');
 
 export const lambdas = x;

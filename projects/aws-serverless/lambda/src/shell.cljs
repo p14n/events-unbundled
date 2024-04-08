@@ -4,6 +4,11 @@
 (defn event-notify-ch [e]
   (some-> e clj->js js/console.log))
 
+(defn assoc-if [m k v]
+  (if (and m k v)
+    (assoc m k v)
+    m))
+
 
 (defn handler-name [handler]
   (-> handler meta :name name (str/replace "-" "") (str/replace "_" "")))
@@ -23,7 +28,9 @@
                             (js/JSON.parse)
                             (js->clj :keywordize-keys true))))
           lookup-data (if lookup-func (lookup-func ctx event) {})
-          result (handler-func ctx event lookup-data)
+          result (assoc-if (handler-func ctx event lookup-data)
+                           :correlation-id
+                           (:correlation-id event))
           ;write event out
           ]
       (event-notify-ch result)

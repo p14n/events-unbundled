@@ -92,9 +92,9 @@
    (let [handlers (handler-metas hs)
          grouped-by-topic (group-by-topic handlers)]
      {"module" (merge
-                {"dynamodb_table_events" [{"attributes" [{"name" "id", "type" "S"}
+                {"dynamodb_table_events" [{"attributes" [{"name" "event-id", "type" "S"}
                                                          {"name" "created", "type" "S"}],
-                                           "hash_key" "id",
+                                           "hash_key" "event-id",
                                            "range_key" "created"
                                            "name" "events",
                                            "stream_enabled" true
@@ -119,7 +119,8 @@
                                                     "source_parameters" [{"dynamodb_stream_parameters" [{"batch_size" 1,
                                                                                                          "starting_position" "LATEST"}]}],
                                                     "target" "${module.eventbridge.eventbridge_bus_arn}"
-                                                    "target_parameters" {"input_template" (json/generate-string {"id" "<$.dynamodb.NewImage.id.S>",
+                                                    "target_parameters" {"input_template" (json/generate-string {"event-id" "<$.dynamodb.NewImage.event-id.S>",
+                                                                                                                 "correlation-id" "<$.dynamodb.NewImage.correlation-id.S>",
                                                                                                                  "topic" "<$.dynamodb.NewImage.topic.S>",
                                                                                                                  "type" "<$.dynamodb.NewImage.type.S>",
                                                                                                                  "created" "<$.dynamodb.NewImage.created.S>",

@@ -1,10 +1,23 @@
 {:paths ["clj"]
  :min-bb-version "0.4.0"
-
+ :deps {functions/functions {:local/root "../../../functions"}}
  :tasks
  {:requires ([infra :as inf]
-             [cheshire.core :as json])
+             [lambda-handlers :as lh]
+             [cheshire.core :as json]
+             [clojure.string :as str])
 
 
   synth {:doc "Creates terraform"
-         :task (->> (inf/synth) (json/generate-string) (spit "transient.tf.json"))}}}
+         :task (->> (inf/synth lh/all) (json/generate-string) (spit "transient.tf.json"))}
+  zip-lambda {:doc "Zips lambda"
+              :task (shell {:dir "../lambda"} "zip -FSr lambda.zip .")}
+
+  build {:doc "Creates terraform and zips lambda"
+         :depends [synth zip-lambda]}
+
+  tf {:doc "Builds and runs terraform"
+      :depends [build]
+      :task (shell (str "terraform " (str/join " " *command-line-args*)))}}}
+
+

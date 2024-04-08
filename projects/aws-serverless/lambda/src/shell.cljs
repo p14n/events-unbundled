@@ -1,7 +1,11 @@
-(ns shell)
+(ns shell
+  (:require [clojure.string :as str]))
 
 (defn event-notify-ch [e]
   (some-> e clj->js js/console.log))
+
+(defn handler-name-kw [handler]
+  (-> handler meta :name name (str/replace "-" "") (str/replace "_" "") keyword))
 
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]

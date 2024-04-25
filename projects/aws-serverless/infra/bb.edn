@@ -14,8 +14,11 @@
   zip-lambda {:doc "Zips lambda"
               :task (shell {:dir "../lambda"} "zip -FSr lambda.zip .")}
 
+  zip-gql {:doc "Zips graphql"
+           :task (shell {:dir "../graphql"} "zip -FSr graphql.zip .")}
+
   build {:doc "Creates terraform and zips lambda"
-         :depends [synth zip-lambda]}
+         :depends [synth zip-lambda zip-gql]}
 
   tf {:doc "Builds and runs terraform"
       :depends [build]

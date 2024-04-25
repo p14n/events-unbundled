@@ -52,20 +52,29 @@
                  "Effect" "Allow"
                  "Resource" "*"}]})
 
+(def elasticache-policy
+  {"Statement" [{"Action" ["elasticache:Connect"],
+                 "Effect" "Allow",
+                 "Resource" ["*"]}],
+   "Version" "2012-10-17"})
+
 (def pipe-role-policy
   {"Version" "2012-10-17"
    "Statement" [{"Action" "sts:AssumeRole"
                  "Effect" "Allow"
                  "Principal" {"Service" "pipes.amazonaws.com"}}]})
 
-(defn synth-lambda [name]
-  [(str "lambda_function_" name) [{"create_package" false,
-                                   "description" (str "Lambda function " name),
-                                   "function_name" name,
-                                   "handler" (str "index.lambdas." name),
-                                   "local_existing_package" "../lambda/lambda.zip",
-                                   "runtime" "nodejs20.x",
-                                   "source" "terraform-aws-modules/lambda/aws"}]])
+(defn synth-lambda
+  ([name]
+   (synth-lambda name (str "index.lambdas." name) "../lambda/lambda.zip"))
+  ([name handler package]
+   [(str "lambda_function_" name) [{"create_package" false,
+                                    "description" (str "Lambda function " name),
+                                    "function_name" name,
+                                    "handler" handler,
+                                    "local_existing_package" package,
+                                    "runtime" "nodejs20.x",
+                                    "source" "terraform-aws-modules/lambda/aws"}]]))
 
 (defn synth-lambda-target [rule-name handler]
   {"arn" (str "${module.lambda_function_" handler ".lambda_function_arn}"),
@@ -147,6 +156,14 @@
                  "role" (str "${module.lambda_function_" handler-name ".lambda_role_name}")}]]))
        (into {})))
 
+(defn- elasticache-policy-attachments [all-handler-names]
+  (->> all-handler-names
+       (map (fn [handler-name]
+              [(str "elasticache_pa_" handler-name)
+               [{"policy_arn" (str "${aws_iam_policy.elasticache_policy.arn}"),
+                 "role" (str "${module.lambda_function_" handler-name ".lambda_role_name}")}]]))
+       (into {})))
+
 (defn ddb-policies [table-names]
   (->> table-names
        (map (fn [table-name]
@@ -154,6 +171,38 @@
                [{"name" (str "ddb_" table-name "_policy"),
                  "policy" (json/generate-string (table-policy table-name))}]]))
        (into {})))
+
+
+(defn- create-api-gateway []
+  {"aws_api_gateway_deployment" {"graphql" [{"depends_on" ["aws_api_gateway_integration.lambda"
+                                                           "aws_api_gateway_integration.lambda_root"],
+                                             "rest_api_id" "${aws_api_gateway_rest_api.graphql.id}",
+                                             "stage_name" "live"}]},
+   "aws_api_gateway_integration" {"lambda" [{"http_method" "${aws_api_gateway_method.proxy.http_method}",
+                                             "integration_http_method" "POST",
+                                             "resource_id" "${aws_api_gateway_method.proxy.resource_id}",
+                                             "rest_api_id" "${aws_api_gateway_rest_api.graphql.id}",
+                                             "type" "AWS_PROXY",
+                                             "uri" "${module.lambda_function_graphql.lambda_function_invoke_arn}"}],
+                                  "lambda_root" [{"http_method" "${aws_api_gateway_method.proxy_root.http_method}",
+                                                  "integration_http_method" "POST",
+                                                  "resource_id" "${aws_api_gateway_method.proxy_root.resource_id}",
+                                                  "rest_api_id" "${aws_api_gateway_rest_api.graphql.id}",
+                                                  "type" "AWS_PROXY",
+                                                  "uri" "${module.lambda_function_graphql.lambda_function_invoke_arn}"}]},
+   "aws_api_gateway_method" {"proxy" [{"authorization" "NONE",
+                                       "http_method" "ANY",
+                                       "resource_id" "${aws_api_gateway_resource.proxy.id}",
+                                       "rest_api_id" "${aws_api_gateway_rest_api.graphql.id}"}],
+                             "proxy_root" [{"authorization" "NONE",
+                                            "http_method" "ANY",
+                                            "resource_id" "${aws_api_gateway_rest_api.graphql.root_resource_id}",
+                                            "rest_api_id" "${aws_api_gateway_rest_api.graphql.id}"}]},
+   "aws_api_gateway_resource" {"proxy" [{"parent_id" "${aws_api_gateway_rest_api.graphql.root_resource_id}",
+                                         "path_part" "{proxy+}",
+                                         "rest_api_id" "${aws_api_gateway_rest_api.graphql.id}"}]},
+   "aws_api_gateway_rest_api" {"graphql" [{"description" "Graphql API",
+                                           "name" "Graphql"}]}})
 
 (defn create-dynamodb-tables []
   {"dynamodb_table_events" (create-dynamodb-table
@@ -181,32 +230,45 @@
                                         "rules" (create-rules grouped-by-topic)
                                         "targets" (create-targets grouped-by-topic)
                                         "source" "terraform-aws-modules/eventbridge/aws"}]}
-                       (into {} (map synth-lambda all-handler-names))])
-      "resource" {"aws_iam_policy" (merge {"pipe_policy" [{"name" "pipe-policy",
-                                                           "policy" (json/generate-string pipe-policy)}]}
-                                          (ddb-policies ["events" "customer_emails" "customers"])),
-                  "aws_iam_role" {"pipe_role" [{"assume_role_policy" (json/generate-string pipe-role-policy)
-                                                "description" "Role for pipe",
-                                                "name" "pipe-role"}]},
-                  "aws_iam_role_policy_attachment" (apply merge
-                                                          [{"pipe_policy_attachment" [{"policy_arn" "${aws_iam_policy.pipe_policy.arn}",
-                                                                                       "role" "${aws_iam_role.pipe_role.name}"}]}
-                                                           (ddb-handler-policy-attachments "events" all-handler-names)
-                                                           (ddb-handler-policy-attachments "customer_emails" ["invitecustomereventhandler"])
-                                                           (ddb-handler-policy-attachments "customers" ["customerprojector"])]),
-                  "aws_lambda_permission" (synth-lambda-rule-permissions grouped-by-topic),
-                  "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
-                                                    "role_arn" "${aws_iam_role.pipe_role.arn}",
-                                                    "source" "${module.dynamodb_table_events.dynamodb_table_stream_arn}",
-                                                    "source_parameters" [{"dynamodb_stream_parameters" [{"batch_size" 1,
-                                                                                                         "starting_position" "LATEST"}]}],
-                                                    "target" "${module.eventbridge.eventbridge_bus_arn}"
-                                                    "target_parameters" {"input_template" (json/generate-string {"event-id" "<$.dynamodb.NewImage.event-id.S>",
-                                                                                                                 "correlation-id" "<$.dynamodb.NewImage.correlation-id.S>",
-                                                                                                                 "topic" "<$.dynamodb.NewImage.topic.S>",
-                                                                                                                 "type" "<$.dynamodb.NewImage.type.S>",
-                                                                                                                 "created" "<$.dynamodb.NewImage.created.S>",
-                                                                                                                 "body" "<$.dynamodb.NewImage.body.S>"})}}]}}
+                       (into {} (concat (map synth-lambda all-handler-names)
+                                        [(synth-lambda "graphql" "server.graphqlHandler" "../graphql/graphql.zip")]))])
+      "resource" (merge
+                  {"aws_elasticache_serverless_cache" {"response_cache" [{"cache_usage_limits" [{"data_storage" [{"maximum" 1,
+                                                                                                                  "unit" "GB"}],
+                                                                                                 "ecpu_per_second" [{"maximum" 1000}]}],
+                                                                          "description" "Response queues",
+                                                                          "engine" "redis",
+                                                                          "name" "response-queues"}]}
+                   "aws_iam_policy" (merge {"pipe_policy" [{"name" "pipe-policy",
+                                                            "policy" (json/generate-string pipe-policy)}]
+                                            "elasticache_policy" [{"name" "elasticache-policy",
+                                                                   "policy" (json/generate-string elasticache-policy)}]}
+                                           (ddb-policies ["events" "customer_emails" "customers"])),
+                   "aws_iam_role" {"pipe_role" [{"assume_role_policy" (json/generate-string pipe-role-policy)
+                                                 "description" "Role for pipe",
+                                                 "name" "pipe-role"}]},
+                   "aws_iam_role_policy_attachment" (apply merge
+                                                           [{"pipe_policy_attachment" [{"policy_arn" "${aws_iam_policy.pipe_policy.arn}",
+                                                                                        "role" "${aws_iam_role.pipe_role.name}"}]}
+                                                            (elasticache-policy-attachments (conj all-handler-names "graphql"))
+                                                            (ddb-handler-policy-attachments "events" all-handler-names)
+                                                            (ddb-handler-policy-attachments "customer_emails" ["invitecustomereventhandler"])
+                                                            (ddb-handler-policy-attachments "customers" ["customerprojector"])]),
+                   "aws_lambda_permission" (synth-lambda-rule-permissions grouped-by-topic),
+                   "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
+                                                     "role_arn" "${aws_iam_role.pipe_role.arn}",
+                                                     "source" "${module.dynamodb_table_events.dynamodb_table_stream_arn}",
+                                                     "source_parameters" [{"dynamodb_stream_parameters" [{"batch_size" 1,
+                                                                                                          "starting_position" "LATEST"}]}],
+                                                     "target" "${module.eventbridge.eventbridge_bus_arn}"
+                                                     "target_parameters" {"input_template" (json/generate-string {"event-id" "<$.dynamodb.NewImage.event-id.S>",
+                                                                                                                  "correlation-id" "<$.dynamodb.NewImage.correlation-id.S>",
+                                                                                                                  "topic" "<$.dynamodb.NewImage.topic.S>",
+                                                                                                                  "type" "<$.dynamodb.NewImage.type.S>",
+                                                                                                                  "created" "<$.dynamodb.NewImage.created.S>",
+                                                                                                                  "body" "<$.dynamodb.NewImage.body.S>"})}}]}}
+                  (create-api-gateway))
       "provider" {"aws" [{"default_tags" [{"tags" {"Component" "aws-serverless"}}]
-                          "region" "eu-west-1"}]}})))
+                          "region" "eu-west-1"}]}
+      "output" {"elasticache_endpoint" {"value" "${aws_elasticache_serverless_cache.response_cache.endpoint}"}}})))
 

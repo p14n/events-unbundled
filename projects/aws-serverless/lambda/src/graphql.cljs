@@ -6,7 +6,6 @@
             ["@redis/client" :as redis]
             [common.base.core :as core]
             [promesa.core :as p]
-            [promesa.exec.csp :as sp]
             [dynamodb-tools :as ddbt]
             [resolvers :as r]))
 
@@ -17,30 +16,32 @@
 
 
 (defn- subscribe-response [ch id ctx resolver]
-  (sp/let [events (atom [])]
+  (p/let [events (atom [])]
+    (js/console.log "Subscribing to response queue " id)
     (.subscribe q-client id
                 (fn [msg _]
                   (let [v (js/JSON.parse msg)]
                     (js/console.log "Received message" v)
                     (swap! events conj v)
-                    (sp/let [res (resolver ctx @events)]
+                    (p/let [res (resolver ctx @events)]
                       (when res
                         (.unsubscribe q-client id)
-                        (sp/put ch res))))))))
+                        (p/put ch res))))))))
 
 (defn write-command [command-name body ctx resolver]
-  (sp/let [id (core/uuid)
-           command (lib-ddb/PutCommand. (clj->js {"TableName" "events"
-                                                  "Item" {"event-id" {"S" id}
-                                                          "correlation-id" {"S" id}
-                                                          "topic" {"S" "commands"}
-                                                          "type" {"S" command-name}
-                                                          "body" {"S" (js/JSON.stringify body)}
-                                                          "created" {"S" (.toISOString (js/Date.))}}}))
-           ch (sp/chan :buf 2)
-           _ (subscribe-response ch id ctx resolver)
-           _ (.send doc-client command)
-           res @(sp/take ch 10000 :timeout)]
+  (p/let [id (core/uuid)
+          command (lib-ddb/PutCommand. (clj->js {"TableName" "events"
+                                                 "Item" {"event-id" {"S" id}
+                                                         "correlation-id" {"S" id}
+                                                         "topic" {"S" "commands"}
+                                                         "type" {"S" command-name}
+                                                         "body" {"S" (js/JSON.stringify body)}
+                                                         "created" {"S" (.toISOString (js/Date.))}}}))
+          ch (p/chan :buf 2)
+          _ (subscribe-response ch id ctx resolver)
+          command-response (.send doc-client command)
+          _ (js/console.log "Sent command" command-response)
+          res @(p/take ch 10000 :timeout)]
     res))
 
 (def type-defs
@@ -66,4 +67,6 @@
 
 (def handler (lambda/startServerAndCreateLambdaHandler server (lambda/createAPIGatewayProxyEventV2RequestHandler)))
 
-#js {:handler handler}
+(js/console.log "Handler" handler)
+
+(clj->js {:handler handler})

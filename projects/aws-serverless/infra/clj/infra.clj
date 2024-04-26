@@ -231,7 +231,7 @@
                                         "targets" (create-targets grouped-by-topic)
                                         "source" "terraform-aws-modules/eventbridge/aws"}]}
                        (into {} (concat (map synth-lambda all-handler-names)
-                                        [(synth-lambda "graphql" "server.graphqlHandler" "../graphql/graphql.zip")]))])
+                                        [(synth-lambda "graphql" "graphql.handler" "../lambda/lambda.zip")]))])
       "resource" (merge
                   {"aws_elasticache_serverless_cache" {"response_cache" [{"cache_usage_limits" [{"data_storage" [{"maximum" 1,
                                                                                                                   "unit" "GB"}],
@@ -254,7 +254,13 @@
                                                             (ddb-handler-policy-attachments "events" all-handler-names)
                                                             (ddb-handler-policy-attachments "customer_emails" ["invitecustomereventhandler"])
                                                             (ddb-handler-policy-attachments "customers" ["customerprojector"])]),
-                   "aws_lambda_permission" (synth-lambda-rule-permissions grouped-by-topic),
+                   "aws_lambda_permission" (merge
+                                            {"apigw" [{"action" "lambda:InvokeFunction",
+                                                       "function_name" "${module.lambda_function_graphql.lambda_function_name}",
+                                                       "principal" "apigateway.amazonaws.com",
+                                                       "source_arn" "${aws_api_gateway_rest_api.graphql.execution_arn}/*/*/*",
+                                                       "statement_id" "AllowAPIGatewayInvoke"}]}
+                                            (synth-lambda-rule-permissions grouped-by-topic)),
                    "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
                                                      "role_arn" "${aws_iam_role.pipe_role.arn}",
                                                      "source" "${module.dynamodb_table_events.dynamodb_table_stream_arn}",
@@ -270,5 +276,6 @@
                   (create-api-gateway))
       "provider" {"aws" [{"default_tags" [{"tags" {"Component" "aws-serverless"}}]
                           "region" "eu-west-1"}]}
-      "output" {"elasticache_endpoint" {"value" "${aws_elasticache_serverless_cache.response_cache.endpoint}"}}})))
+      "output" {"api-gateway-url" {"value" "${aws_api_gateway_deployment.graphql.invoke_url}"}
+                "elasticache_endpoint" {"value" "${aws_elasticache_serverless_cache.response_cache.endpoint}"}}})))
 

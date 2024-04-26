@@ -15,24 +15,13 @@
 (def q-client (redis/createClient {"url" "redis://response-queues-gwjcas.serverless.euw1.cache.amazonaws.com:6379"}))
 (def doc-client (lib-ddb/DynamoDBDocumentClient. client))
 
-;; (defn from-sqs [id])
-
-;; (defn- get-response [ch id ctx resolver]
-;;   ;(sp/go-loop
-;;   (loop [events []
-;;          counter 10]
-;;     (let [v (sp/take (from-sqs id) 1000 {})
-;;           res (resolver ctx (conj events v))]
-;;       (if (or res (zero? counter))
-;;         (sp/put ch res)
-;;         (recur (conj events v) (dec counter))))))
 
 (defn- subscribe-response [ch id ctx resolver]
-  ;(sp/let)
   (sp/let [events (atom [])]
     (.subscribe q-client id
                 (fn [msg _]
                   (let [v (js/JSON.parse msg)]
+                    (js/console.log "Received message" v)
                     (swap! events conj v)
                     (sp/let [res (resolver ctx @events)]
                       (when res
@@ -40,7 +29,6 @@
                         (sp/put ch res))))))))
 
 (defn write-command [command-name body ctx resolver]
-  ;(sp/let)
   (sp/let [id (core/uuid)
            command (lib-ddb/PutCommand. (clj->js {"TableName" "events"
                                                   "Item" {"event-id" {"S" id}

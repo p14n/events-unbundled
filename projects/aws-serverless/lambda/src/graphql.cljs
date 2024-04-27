@@ -11,13 +11,16 @@
 
 
 (def client (ddb/DynamoDBClient. {}))
-(def q-client (redis/createClient {"url" "redis://response-queues-gwjcas.serverless.euw1.cache.amazonaws.com:6379"}))
+;(def )
 (def doc-client (lib-ddb/DynamoDBDocumentClient. client))
 
 
 (defn- subscribe-response [ch id ctx resolver]
-  (p/let [events (atom [])]
-    (js/console.log "Subscribing to response queue " id)
+  (p/let [events (atom [])
+          q-client (redis/createClient {"url" "rediss://response-queues-gwjcas.serverless.euw1.cache.amazonaws.com:6379"})
+          _ (.on q-client "error" (fn [e] (js/console.error "Error" e)))
+          x (.connect q-client)]
+    (js/console.log "Subscribing to response queue " id " " q-client)
     (.subscribe q-client id
                 (fn [msg _]
                   (let [v (js/JSON.parse msg)]
@@ -29,20 +32,32 @@
                         (p/resolve! ch res))))))))
 
 (defn write-command [command-name body ctx resolver]
-  (p/let [id (core/uuid)
-          command (lib-ddb/PutCommand. (clj->js {"TableName" "events"
-                                                 "Item" {"event-id" {"S" id}
-                                                         "correlation-id" {"S" id}
-                                                         "topic" {"S" "commands"}
-                                                         "type" {"S" command-name}
-                                                         "body" {"S" (js/JSON.stringify body)}
-                                                         "created" {"S" (.toISOString (js/Date.))}}}))
-          ch (p/deferred)
-          _ (subscribe-response ch id ctx resolver)
-          command-response (.send doc-client command)
-          _ (js/console.log "Sent command" command-response)
-          res (deref ch 10000 :timeout)]
-    res))
+  (try
+    (js/console.log "Starting command" command-name body)
+    (let [ch (p/deferred)]
+      (p/let [id (core/uuid)
+              _ (js/console.log "Writing command" id command-name body)
+              content (clj->js {"TableName" "events"
+                                "Item" {"event-id" {"S" id}
+                                        "correlation-id" {"S" id}
+                                        "topic" {"S" "commands"}
+                                        "type" {"S" command-name}
+                                        "body" {"S" (js/JSON.stringify body)}
+                                        "created" {"S" (.toISOString (js/Date.))}}})
+              _ (js/console.log "Content" content)
+              command (lib-ddb/PutCommand. content)
+              _ (js/console.log "Command" command)
+              _ (subscribe-response ch id ctx resolver)
+              _ (js/console.log "Subscribed to response queue" id)
+              _ (js/console.log "Sending command" command)
+              command-response (.send doc-client command)
+              _ (js/console.log "Sent command" command-response)
+              res (deref ch 10000 :timeout)]
+        res))
+    (catch js/Error e
+      (js/console.error "Error writing command" e)
+      (js/console.trace e)
+      (.toString e))))
 
 (def type-defs
   "type Customer {
@@ -50,22 +65,33 @@
      email: String
      invited: Boolean
    }
+   type Query {
+     Customer(id: ID!): Customer
+   }
    type Mutation {
      InviteCustomer(email: String): Customer
+   }
+   schema {
+     query: Query
+     mutation: Mutation
    }")
 (def resolvers
-  {:Mutation {:InviteCustomer (fn [c a v]
+  {:Query {:Customer (fn [c a v]
+                       (js/console.log c a v)
+                       {})}
+   :Mutation {:InviteCustomer (fn [c a v]
                                 (js/console.log c a v)
                                 (write-command "InviteCustomer" {:email (-> a js->clj (get "email"))}
                                                {:db client}
                                                (r/invite-responser
                                                 (fn [db id] (let [cmd (ddbt/create-get-item-command "customers" id)]
-                                                              (-> (.send db cmd) p/resolve ddbt/result-item))))))}})
+                                                              (-> (.send db cmd) ddbt/result-item))))))}})
 
 (def server (apollo/ApolloServer. (clj->js {"typeDefs" type-defs
                                             "resolvers" resolvers})))
 
-(def handler (lambda/startServerAndCreateLambdaHandler server (lambda/createAPIGatewayProxyEventV2RequestHandler)))
+(def handler (lambda/startServerAndCreateLambdaHandler server (.createAPIGatewayProxyEventRequestHandler lambda/handlers)
+                                                       {"middleware" [(fn [e] (js/console.log "Event" e) e)]}))
 
 (js/console.log "Handler" handler)
 

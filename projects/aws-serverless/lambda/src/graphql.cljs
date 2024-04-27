@@ -26,7 +26,7 @@
                     (p/let [res (resolver ctx @events)]
                       (when res
                         (.unsubscribe q-client id)
-                        (p/put ch res))))))))
+                        (p/resolve! ch res))))))))
 
 (defn write-command [command-name body ctx resolver]
   (p/let [id (core/uuid)
@@ -37,11 +37,11 @@
                                                          "type" {"S" command-name}
                                                          "body" {"S" (js/JSON.stringify body)}
                                                          "created" {"S" (.toISOString (js/Date.))}}}))
-          ch (p/chan :buf 2)
+          ch (p/deferred)
           _ (subscribe-response ch id ctx resolver)
           command-response (.send doc-client command)
           _ (js/console.log "Sent command" command-response)
-          res @(p/take ch 10000 :timeout)]
+          res (deref ch 10000 :timeout)]
     res))
 
 (def type-defs

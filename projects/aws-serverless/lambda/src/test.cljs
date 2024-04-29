@@ -6,7 +6,7 @@
 ;; (p/let [y nil
 ;;         client (ddb/create-client)
 ;;         _ (println "a")
-;;         reqs [(ddb/create-table-request "events" [(ddb/create-event-record
+;;         reqs [(ddb/create-table-put-requests "events" [(ddb/create-event-record
 ;;                                                    {:type "Boo" :email "hello"
 ;;                                                     :event-id "1" :correlation-id "2"} "customer")])]
 ;;         _ (println "b")

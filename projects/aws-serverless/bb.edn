@@ -19,7 +19,7 @@
             :task (shell {:dir "./lambda"} "nbb -e \"(println \\\"Installed deps\\\")\"")}
 
   build {:doc "Creates terraform and zips lambda"
-         :depends [synth zip-lambda]}
+         :depends [synth nbb-deps zip-lambda]}
 
   tf {:doc "Builds and runs terraform"
       :depends [build]

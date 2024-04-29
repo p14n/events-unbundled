@@ -16,11 +16,19 @@
      "topic" {"S" topic}
      "body" {"S" (-> body clj->js js/JSON.stringify)}}))
 
-(defn create-table-request [table-name items]
+(defn create-table-put-request [item table-name]
+  {"TableName" table-name
+   "Item" item})
+
+(defn create-table-put-requests [table-name items]
   {table-name (mapv create-put-request items)})
 
 (defn write-all-table-requests [client table-requests]
   (let [req (ddb/BatchWriteItemCommand. (clj->js {"RequestItems" (apply merge table-requests)}))]
+    (.send client req)))
+
+(defn write-single-table-request [client table-request]
+  (let [req (ddb/PutItemCommand. (clj->js table-request))]
     (.send client req)))
 
 

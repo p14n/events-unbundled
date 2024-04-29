@@ -53,7 +53,7 @@
                              (when out-topic (:correlation-id event)))
             table-requests (->> [(when writer-func (writer-func ctx result))
                                  (when (and result out-topic)
-                                   (ddb/create-table-request "events" [(ddb/create-event-record result out-topic)]))]
+                                   (ddb/create-table-put-requests "events" [(ddb/create-event-record result out-topic)]))]
                                 (remove nil?)
                                 (vec))
             _ (js/console.log "Result " (pr-str result))

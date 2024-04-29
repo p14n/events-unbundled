@@ -74,6 +74,9 @@
                                     "handler" handler,
                                     "local_existing_package" package,
                                     "runtime" "nodejs20.x",
+                                    "attach_network_policy" true,
+                                    "vpc_subnet_ids" "${data.aws_subnets.main.ids}",
+                                    "vpc_security_group_ids" ["${aws_security_group.elasticache_bidirectional.id}"],
                                     "source" "terraform-aws-modules/lambda/aws"}]]))
 
 (defn synth-lambda-target [rule-name handler]
@@ -238,7 +241,9 @@
                                                                                                  "ecpu_per_second" [{"maximum" 1000}]}],
                                                                           "description" "Response queues",
                                                                           "engine" "redis",
-                                                                          "name" "response-queues"}]}
+                                                                          "name" "response-queues"
+                                                                          "subnet_ids" "${data.aws_subnets.main.ids}" ,
+                                                                          "security_group_ids" ["${aws_security_group.elasticache_bidirectional.id}"]}]}
                    "aws_iam_policy" (merge {"pipe_policy" [{"name" "pipe-policy",
                                                             "policy" (json/generate-string pipe-policy)}]
                                             "elasticache_policy" [{"name" "elasticache-policy",
@@ -251,7 +256,7 @@
                                                            [{"pipe_policy_attachment" [{"policy_arn" "${aws_iam_policy.pipe_policy.arn}",
                                                                                         "role" "${aws_iam_role.pipe_role.name}"}]}
                                                             (elasticache-policy-attachments (conj all-handler-names "graphql"))
-                                                            (ddb-handler-policy-attachments "events" all-handler-names)
+                                                            (ddb-handler-policy-attachments "events" (conj all-handler-names "graphql"))
                                                             (ddb-handler-policy-attachments "customer_emails" ["invitecustomereventhandler"])
                                                             (ddb-handler-policy-attachments "customers" ["customerprojector"])]),
                    "aws_lambda_permission" (merge
@@ -261,6 +266,22 @@
                                                        "source_arn" "${aws_api_gateway_rest_api.graphql.execution_arn}/*/*/*",
                                                        "statement_id" "AllowAPIGatewayInvoke"}]}
                                             (synth-lambda-rule-permissions grouped-by-topic)),
+                   "aws_security_group" {"elasticache_bidirectional"
+                                         [{"description" "Allow traffic to and from elasticache",
+                                           "name" "elasticache_bidirectional",
+                                           "vpc_id" "${data.aws_vpc.main.id}"}]},
+                   "aws_vpc_security_group_ingress_rule" {"elasticache_ingress"
+                                                          [{"cidr_ipv4" "${data.aws_vpc.main.cidr_block}",
+                                                            "from_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
+                                                            "ip_protocol" "tcp",
+                                                            "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
+                                                            "to_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"}]}
+                   "aws_vpc_security_group_egress_rule" {"elasticache_egress"
+                                                         [{"cidr_ipv4" "${data.aws_vpc.main.cidr_block}",
+                                                           "from_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
+                                                           "ip_protocol" "tcp",
+                                                           "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
+                                                           "to_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"}]}
                    "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
                                                      "role_arn" "${aws_iam_role.pipe_role.arn}",
                                                      "source" "${module.dynamodb_table_events.dynamodb_table_stream_arn}",
@@ -274,8 +295,12 @@
                                                                                                                   "created" "<$.dynamodb.NewImage.created.S>",
                                                                                                                   "body" "<$.dynamodb.NewImage.body.S>"})}}]}}
                   (create-api-gateway))
+      "data" {"aws_vpc" {"main" {"id" "${var.vpc_id}"}}
+              "aws_subnets" {"main" {"filter" [{"name" "vpc-id",
+                                                "values" ["${data.aws_vpc.main.id}"]}]}}}
       "provider" {"aws" [{"default_tags" [{"tags" {"Component" "aws-serverless"}}]
                           "region" "eu-west-1"}]}
+      "variable" {"vpc_id" {}}
       "output" {"api-gateway-url" {"value" "${aws_api_gateway_deployment.graphql.invoke_url}"}
                 "elasticache_endpoint" {"value" "${aws_elasticache_serverless_cache.response_cache.endpoint}"}}})))
 

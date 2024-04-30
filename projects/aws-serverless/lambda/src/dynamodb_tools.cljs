@@ -24,12 +24,17 @@
   {table-name (mapv create-put-request items)})
 
 (defn write-all-table-requests [client table-requests]
+  (js/console.log "Writing all table requests " table-requests " to " client)
   (let [req (ddb/BatchWriteItemCommand. (clj->js {"RequestItems" (apply merge table-requests)}))]
+    (js/console.log "Request " req)
     (.send client req)))
 
 (defn write-single-table-request [client table-request]
-  (let [req (ddb/PutItemCommand. (clj->js table-request))]
-    (.send client req)))
+  (try
+    (let [req (ddb/PutItemCommand. (clj->js table-request))]
+      (.send client req))
+    (catch js/Error e
+      (js/console.log "Error writing to DynamoDB" e))))
 
 
 (defn create-get-item-command [table-name key]
@@ -37,7 +42,11 @@
     (ddb/GetItemCommand. (clj->js {"TableName" table-name "Key" key}))))
 
 (defn create-client []
-  (ddb/DynamoDBClient. {}))
+  (ddb/DynamoDBClient. (clj->js {:logger  {:error (fn [l] (js/console.log "DynamoDB error" l))
+                                           :info (fn [l] (js/console.log "DynamoDB info" l))
+                                           :warning (fn [l] (js/console.log "DynamoDB warning" l))
+                                           :trace (fn [l])
+                                           :debug (fn [l] (js/console.log "DynamoDB debug " l))}})))
 
 (defn result-item [result]
   (some-> result (js->clj :keywordize-keys true) :Item))

@@ -75,6 +75,7 @@
                                     "local_existing_package" package,
                                     "runtime" "nodejs20.x",
                                     "attach_network_policy" true,
+                                    "timeout" 10
                                     "vpc_subnet_ids" "${data.aws_subnets.main.ids}",
                                     "vpc_security_group_ids" ["${aws_security_group.elasticache_bidirectional.id}"],
                                     "source" "terraform-aws-modules/lambda/aws"}]]))
@@ -236,7 +237,10 @@
                        (into {} (concat (map synth-lambda all-handler-names)
                                         [(synth-lambda "graphql" "graphql.handler" "../lambda/lambda.zip")]))])
       "resource" (merge
-                  {"aws_elasticache_serverless_cache" {"response_cache" [{"cache_usage_limits" [{"data_storage" [{"maximum" 1,
+                  {"aws_vpc_endpoint" {"dynamodb"  {"service_name" "com.amazonaws.eu-west-1.dynamodb",
+                                                    "vpc_id" "${data.aws_vpc.main.id}"
+                                                    "route_table_ids" ["${data.aws_vpc.main.main_route_table_id}"]}},
+                   "aws_elasticache_serverless_cache" {"response_cache" [{"cache_usage_limits" [{"data_storage" [{"maximum" 1,
                                                                                                                   "unit" "GB"}],
                                                                                                  "ecpu_per_second" [{"maximum" 1000}]}],
                                                                           "description" "Response queues",
@@ -281,7 +285,13 @@
                                                            "from_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
                                                            "ip_protocol" "tcp",
                                                            "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
-                                                           "to_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"}]}
+                                                           "to_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"}]
+                                                         "dynamodb_egress"
+                                                         [{"cidr_ipv4" "0.0.0.0/0",
+                                                           "from_port" 443,
+                                                           "ip_protocol" "tcp",
+                                                           "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
+                                                           "to_port" 443}]}
                    "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
                                                      "role_arn" "${aws_iam_role.pipe_role.arn}",
                                                      "source" "${module.dynamodb_table_events.dynamodb_table_stream_arn}",

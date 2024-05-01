@@ -75,6 +75,7 @@
                                     "local_existing_package" package,
                                     "runtime" "nodejs20.x",
                                     "attach_network_policy" true,
+                                    "layers" ["${aws_lambda_layer_version.lambda_layer.arn}"]
                                     "timeout" 10
                                     "vpc_subnet_ids" "${data.aws_subnets.main.ids}",
                                     "vpc_security_group_ids" ["${aws_security_group.elasticache_bidirectional.id}"],
@@ -237,7 +238,10 @@
                        (into {} (concat (map synth-lambda all-handler-names)
                                         [(synth-lambda "graphql" "graphql.handler" "../lambda/lambda.zip")]))])
       "resource" (merge
-                  {"aws_vpc_endpoint" {"dynamodb"  {"service_name" "com.amazonaws.eu-west-1.dynamodb",
+                  {"aws_lambda_layer_version" {"lambda_layer" [{"compatible_runtimes" ["nodejs20.x"],
+                                                                "filename" "../layer.zip",
+                                                                "layer_name" "events_unbundled"}]}
+                   "aws_vpc_endpoint" {"dynamodb"  {"service_name" "com.amazonaws.eu-west-1.dynamodb",
                                                     "vpc_id" "${data.aws_vpc.main.id}"
                                                     "route_table_ids" ["${data.aws_vpc.main.main_route_table_id}"]}},
                    "aws_elasticache_serverless_cache" {"response_cache" [{"cache_usage_limits" [{"data_storage" [{"maximum" 1,
@@ -313,4 +317,3 @@
       "variable" {"vpc_id" {}}
       "output" {"api-gateway-url" {"value" "${aws_api_gateway_deployment.graphql.invoke_url}"}
                 "elasticache_endpoint" {"value" "${aws_elasticache_serverless_cache.response_cache.endpoint}"}}})))
-

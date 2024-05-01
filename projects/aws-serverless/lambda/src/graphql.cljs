@@ -24,11 +24,11 @@
 (def resolvers
   {:Query {:Customer (fn [c a v]
                        (js/console.log c a v)
-                       (let [{:keys [id]} (shell/json->clj a)]
+                       (let [{:keys [id]} (shell/js->kwclj a)]
                          (ddb/single-item-fetch shell/db-client "customers" id)))}
    :Mutation {:InviteCustomer (fn [c a v]
                                 (js/console.log c a v)
-                                (shell/write-command "InviteCustomer" (shell/json->clj a) {}
+                                (shell/write-command "InviteCustomer" (shell/js->kwclj a) {}
                                                      (r/invite-responser
                                                       (fn [db id] (ddb/single-item-fetch db "customers" id)))))}})
 

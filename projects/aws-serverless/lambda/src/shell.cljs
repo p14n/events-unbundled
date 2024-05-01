@@ -5,8 +5,11 @@
             ["@redis/client" :as redis]
             [common.base.core :as core]))
 
+(defn js->kwclj [j]
+  (some-> j (js->clj :keywordize-keys true)))
+
 (defn json->clj [j]
-  (some-> j js/JSON.parse (js->clj :keywordize-keys true)))
+  (some-> j js/JSON.parse js->kwclj))
 
 (defn clj->json [c]
   (some-> c (clj->js) js/JSON.stringify))

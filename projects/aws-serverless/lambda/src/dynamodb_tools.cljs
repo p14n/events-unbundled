@@ -1,6 +1,7 @@
 (ns dynamodb-tools
   (:require ["@aws-sdk/client-dynamodb" :as ddb]
-            [common.base.core :as core]))
+            [common.base.core :as core]
+            [promesa.core :as p]))
 
 (defn create-put-request [item]
   {"PutRequest" {"Item" item}})
@@ -16,10 +17,6 @@
      "topic" {"S" topic}
      "body" {"S" (-> body clj->js js/JSON.stringify)}}))
 
-(defn create-table-put-request [item table-name]
-  {"TableName" table-name
-   "Item" item})
-
 (defn create-table-put-requests [table-name items]
   {table-name (mapv create-put-request items)})
 
@@ -29,17 +26,10 @@
     (js/console.log "Request " req)
     (.send client req)))
 
-(defn write-single-table-request [client table-request]
-  (try
-    (let [req (ddb/PutItemCommand. (clj->js table-request))]
-      (.send client req))
-    (catch js/Error e
-      (js/console.log "Error writing to DynamoDB" e))))
-
-
 (defn create-get-item-command [table-name key]
   (let [key (clj->js key)]
     (ddb/GetItemCommand. (clj->js {"TableName" table-name "Key" key}))))
+
 
 (defn create-client []
   (ddb/DynamoDBClient. (clj->js {:logger  {:error (fn [l] (js/console.log "DynamoDB error" l))
@@ -58,3 +48,7 @@
 
 (defn result->object [result]
   (-> result result-item item->object))
+
+(defn single-item-fetch [db table id]
+  (let [cmd (create-get-item-command table id)]
+    (p/-> (.send db cmd) result->object)))

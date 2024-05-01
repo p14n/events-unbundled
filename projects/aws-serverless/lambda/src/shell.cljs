@@ -5,6 +5,12 @@
             ["@redis/client" :as redis]
             [common.base.core :as core]))
 
+(defn json->clj [j]
+  (some-> j js/JSON.parse (js->clj :keywordize-keys true)))
+
+(defn clj->json [c]
+  (some-> c (clj->js) js/JSON.stringify))
+
 (defn create-redis-client []
   (doto (redis/createClient (clj->js {:socket {:host "response-queues-gwjcas.serverless.euw1.cache.amazonaws.com"
                                                :port 6379
@@ -12,10 +18,12 @@
     (.on "error" (fn [e] (js/console.error "Error" e)))
     (.connect)))
 
+(def q-client (create-redis-client))
+(def db-client (ddb/create-client))
+
 
 (defn create-event-notify-ch [correlation-id]
-  (p/let [client (create-redis-client)
-          f #(.publish client correlation-id %)]
+  (p/let [f #(.publish q-client correlation-id %)]
     (fn [e]
       (some-> e clj->js js/JSON.stringify f)
       nil)))
@@ -53,8 +61,7 @@
     event))
 
 (defn- subscribe-response [ch id ctx resolver]
-  (p/let [events (atom [])
-          q-client (create-redis-client)]
+  (p/let [events (atom [])]
     (js/console.log "Subscribing to response queue " id " " q-client)
     (.subscribe q-client id
                 (fn [msg _]
@@ -64,9 +71,10 @@
                     (p/let [res (resolver ctx @events)]
                       (when res
                         (.unsubscribe q-client id)
+                        (.unref q-client)
                         (p/resolve! ch res))))))))
 
-(defn write-command [command-name body {:keys [db] :as ctx} resolver]
+(defn write-command [command-name body ctx resolver]
   (try
     (js/console.log "Starting command" command-name body)
     (let [ch (p/deferred)]
@@ -78,11 +86,10 @@
               _ (subscribe-response ch id ctx resolver)
               _ (js/console.log "Subscribed to response queue" id)
               _ (js/console.log "Command" (clj->js command))
-              command-response (ddb/write-all-table-requests db [(ddb/create-table-put-requests "events" [command])])
+              command-response (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])
               _ (js/console.log "Sent command" command-response)
               res (deref ch 10000 :timeout)
               _ (js/console.log "Resolver response " res)]
-
         res))
     (catch js/Error e
       (js/console.log "Error writing command" e)
@@ -92,12 +99,11 @@
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]
     (js/console.log "Event received " e)
-    (p/let [client (ddb/create-client)
-            event (transalate-event e)
+    (p/let [event (transalate-event e)
             correlation-id (:correlation-id event)
             out-topic (handler-topic handler-func)
             event-notify-ch (create-event-notify-ch correlation-id)
-            ctx {:event-notify-ch event-notify-ch :db client}
+            ctx {:event-notify-ch event-notify-ch :db db-client}
 
             lookup-data (if lookup-func (lookup-func ctx event) {})
             _ (js/console.log "Lookup " (pr-str lookup-data))
@@ -114,26 +120,11 @@
                                   (vec)))
             _ (js/console.log "Table requests " (pr-str table-requests))
             write-response (when (seq table-requests)
-                             (ddb/write-all-table-requests client table-requests))
+                             (ddb/write-all-table-requests db-client table-requests))
             _ (js/console.log "Write response " (pr-str write-response))]
       (event-notify-ch result)
+      (.unref q-client)
       (http-response 200 result))))
-
-;; (defn create-simple-handler [handler-func]
-;;   (create-handler handler-func nil nil))
-
-;; (defn create-lookup-handler [handler-func lookup-func]
-;;   (create-handler handler-func lookup-func nil))
 
 (defn create-lookup-writer-handler [handler-func lookup-func writer-func]
   (create-handler handler-func lookup-func writer-func))
-
-
-;; 2024-04-30T22:42:27.019+01:00	2024-04-30T21:42:27.019Z 34e0cfd7-4846-44ff-8d1e-668c866ce25f INFO Lookup {:existing-id "61e8be12-fbbf-4688-9677-54910f6331e9"}
-;; 2024-04-30T22:42:27.079+01:00
-;; 2024-04-30T21:42:27.079Z	34e0cfd7-4846-44ff-8d1e-668c866ce25f	ERROR	Invoke Error 	
-;; {
-;;     "errorType": "Error",
-;;     "errorMessage": "No protocol method IAssociative.-assoc defined for type object: [object Promise]",
-;;     "message": "No protocol method IAssociative.-assoc defined for type object: [object Promise]",
-

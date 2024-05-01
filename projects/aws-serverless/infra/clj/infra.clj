@@ -78,7 +78,7 @@
                                     "layers" ["${aws_lambda_layer_version.lambda_layer.arn}"]
                                     "timeout" 10
                                     "vpc_subnet_ids" "${data.aws_subnets.main.ids}",
-                                    "vpc_security_group_ids" ["${aws_security_group.elasticache_bidirectional.id}"],
+                                    "vpc_security_group_ids" ["${aws_security_group.lambda_sg.id}"],
                                     "source" "terraform-aws-modules/lambda/aws"}]]))
 
 (defn synth-lambda-target [rule-name handler]
@@ -251,7 +251,7 @@
                                                                           "engine" "redis",
                                                                           "name" "response-queues"
                                                                           "subnet_ids" "${data.aws_subnets.main.ids}" ,
-                                                                          "security_group_ids" ["${aws_security_group.elasticache_bidirectional.id}"]}]}
+                                                                          "security_group_ids" ["${aws_security_group.elasticache_sg.id}"]}]}
                    "aws_iam_policy" (merge {"pipe_policy" [{"name" "pipe-policy",
                                                             "policy" (json/generate-string pipe-policy)}]
                                             "elasticache_policy" [{"name" "elasticache-policy",
@@ -274,27 +274,31 @@
                                                        "source_arn" "${aws_api_gateway_rest_api.graphql.execution_arn}/*/*/*",
                                                        "statement_id" "AllowAPIGatewayInvoke"}]}
                                             (synth-lambda-rule-permissions grouped-by-topic)),
-                   "aws_security_group" {"elasticache_bidirectional"
-                                         [{"description" "Allow traffic to and from elasticache",
-                                           "name" "elasticache_bidirectional",
+                   "aws_security_group" {"elasticache_sg"
+                                         [{"description" "Allow traffic to elasticache",
+                                           "name" "elasticache_sg",
+                                           "vpc_id" "${data.aws_vpc.main.id}"}]
+                                         "lambda_sg"
+                                         [{"description" "Allow traffic to elasticache and dynamo",
+                                           "name" "lambda_sg",
                                            "vpc_id" "${data.aws_vpc.main.id}"}]},
                    "aws_vpc_security_group_ingress_rule" {"elasticache_ingress"
                                                           [{"cidr_ipv4" "${data.aws_vpc.main.cidr_block}",
                                                             "from_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
                                                             "ip_protocol" "tcp",
-                                                            "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
+                                                            "security_group_id" "${aws_security_group.elasticache_sg.id}",
                                                             "to_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"}]}
                    "aws_vpc_security_group_egress_rule" {"elasticache_egress"
                                                          [{"cidr_ipv4" "${data.aws_vpc.main.cidr_block}",
                                                            "from_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
                                                            "ip_protocol" "tcp",
-                                                           "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
+                                                           "security_group_id" "${aws_security_group.lambda_sg.id}",
                                                            "to_port" "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"}]
                                                          "dynamodb_egress"
                                                          [{"cidr_ipv4" "0.0.0.0/0",
                                                            "from_port" 443,
                                                            "ip_protocol" "tcp",
-                                                           "security_group_id" "${aws_security_group.elasticache_bidirectional.id}",
+                                                           "security_group_id" "${aws_security_group.lambda_sg.id}",
                                                            "to_port" 443}]}
                    "aws_pipes_pipe" {"events_pipe" [{"name" "events-pipe",
                                                      "role_arn" "${aws_iam_role.pipe_role.arn}",

@@ -17,7 +17,8 @@
   (p/let [client (create-redis-client)
           f #(.publish client correlation-id %)]
     (fn [e]
-      (some-> e clj->js js/JSON.stringify f))))
+      (some-> e clj->js js/JSON.stringify f)
+      nil)))
 
 (defn assoc-if [m k v]
   (if (and m k v)
@@ -57,7 +58,7 @@
     (js/console.log "Subscribing to response queue " id " " q-client)
     (.subscribe q-client id
                 (fn [msg _]
-                  (let [v (js/JSON.parse msg)]
+                  (let [v (js->clj (js/JSON.parse msg))]
                     (js/console.log "Received message" v)
                     (swap! events conj v)
                     (p/let [res (resolver ctx @events)]
@@ -79,10 +80,10 @@
               _ (js/console.log "Command" (clj->js command))
               command-response (ddb/write-all-table-requests db [(ddb/create-table-put-requests "events" [command])])
               _ (js/console.log "Sent command" command-response)
-              ;res (deref ch 10000 :timeout)
-              ]
+              res (deref ch 10000 :timeout)
+              _ (js/console.log "Resolver response " res)]
 
-        ch))
+        res))
     (catch js/Error e
       (js/console.log "Error writing command" e)
       (js/console.trace e)
@@ -101,15 +102,16 @@
             lookup-data (if lookup-func (lookup-func ctx event) {})
             _ (js/console.log "Lookup " (pr-str lookup-data))
 
-            result (assoc-if (handler-func ctx event lookup-data)
-                             :correlation-id
-                             (when out-topic correlation-id))
-            table-requests (->> [(when writer-func (writer-func ctx result))
-                                 (when (and result out-topic)
-                                   (ddb/create-table-put-requests "events" [(ddb/create-event-record result out-topic)]))]
-                                (remove nil?)
-                                (vec))
+            result (some-> (handler-func ctx event lookup-data)
+                           (assoc-if :correlation-id (when out-topic correlation-id)))
             _ (js/console.log "Result " (pr-str result))
+            table-requests (when result
+                             (->> [(when writer-func
+                                     (writer-func ctx result))
+                                   (when out-topic
+                                     (ddb/create-table-put-requests "events" [(ddb/create-event-record result out-topic)]))]
+                                  (remove nil?)
+                                  (vec)))
             _ (js/console.log "Table requests " (pr-str table-requests))
             write-response (when (seq table-requests)
                              (ddb/write-all-table-requests client table-requests))

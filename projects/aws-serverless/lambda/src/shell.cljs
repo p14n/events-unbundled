@@ -72,6 +72,7 @@
                     (js/console.log "Received message" v)
                     (swap! events conj v)
                     (p/let [res (resolver ctx @events)]
+                      (js/console.log "Received response" res)
                       (when res
                         (.unsubscribe q-client id)
                         (.unref q-client)
@@ -90,10 +91,8 @@
               _ (js/console.log "Subscribed to response queue" id)
               _ (js/console.log "Command" (clj->js command))
               command-response (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])
-              _ (js/console.log "Sent command" command-response)
-              res (deref ch 10000 :timeout)
-              _ (js/console.log "Resolver response " res)]
-        res))
+              _ (js/console.log "Sent command" command-response)]
+        ch))
     (catch js/Error e
       (js/console.log "Error writing command" e)
       (js/console.trace e)
@@ -131,3 +130,10 @@
 
 (defn create-lookup-writer-handler [handler-func lookup-func writer-func]
   (create-handler handler-func lookup-func writer-func))
+
+
+
+;; 2024-05-01T17:07:56.672+01:00	2024-05-01T16:07:56.672Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO DynamoDB debug endpoints Resolved endpoint: { "headers": {}, "properties": {}, "url": "https://dynamodb.eu-west-1.amazonaws.com/" }
+;; 2024-05-01T17:07:56.991+01:00	2024-05-01T16:07:56.991Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO DynamoDB info { clientName: 'DynamoDBClient', commandName: 'BatchWriteItemCommand', input: { RequestItems: { events: [Array] } }, output: { UnprocessedItems: {} }, metadata: { httpStatusCode: 200, requestId: 'N5881TE3OG42SVJ8TM2K8Q93EBVV4KQNSO5AEMVJF66Q9ASUAAJG', extendedRequestId: undefined, cfId: undefined, attempts: 1, totalRetryDelay: 0 } }
+;; 2024-05-01T17:07:56.991+01:00	2024-05-01T16:07:56.991Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO Sent command { '$metadata': { httpStatusCode: 200, requestId: 'N5881TE3OG42SVJ8TM2K8Q93EBVV4KQNSO5AEMVJF66Q9ASUAAJG', extendedRequestId: undefined, cfId: undefined, attempts: 1, totalRetryDelay: 0 }, UnprocessedItems: {} }
+;; 2024-05-01T17:07:56.991+01:00	2024-05-01T16:07:56.991Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO Resolver response undefined

@@ -13,15 +13,14 @@
                     (spit "./infra/transient.tf.json"))}
 
   zip-lambda {:doc "Zips lambda"
-              :task (shell {:dir "./lambda"} "zip -FSr lambda.zip . -x \"node_modules/*\"")}
+              :task (shell {:dir "./nodejs"} "zip -FSr lambda.zip . -x \"node_modules/*\"")}
 
   zip-layer {:doc "Zips layer"
              :task (do
-                     (shell {:continue true} "ln -s lambda nodejs")
                      (shell "zip -FSr layer.zip nodejs/node_modules/"))}
 
   nbb-deps {:doc "Installs nbb dependencies"
-            :task (shell {:dir "./lambda"} "nbb -e \"(println \\\"Installed deps\\\")\"")}
+            :task (shell {:dir "./nodejs"} "nbb -e \"(println \\\"Installed deps\\\")\"")}
 
   build {:doc "Creates terraform and zips lambda"
          :depends [synth nbb-deps zip-layer zip-lambda]}

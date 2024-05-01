@@ -66,7 +66,7 @@
 
 (defn synth-lambda
   ([name]
-   (synth-lambda name (str "index.lambdas." name) "../lambda/lambda.zip"))
+   (synth-lambda name (str "index.lambdas." name) "../nodejs/lambda.zip"))
   ([name handler package]
    [(str "lambda_function_" name) [{"create_package" false,
                                     "description" (str "Lambda function " name),
@@ -236,7 +236,7 @@
                                         "targets" (create-targets grouped-by-topic)
                                         "source" "terraform-aws-modules/eventbridge/aws"}]}
                        (into {} (concat (map synth-lambda all-handler-names)
-                                        [(synth-lambda "graphql" "graphql.handler" "../lambda/lambda.zip")]))])
+                                        [(synth-lambda "graphql" "graphql.handler" "../nodejs/lambda.zip")]))])
       "resource" (merge
                   {"aws_lambda_layer_version" {"lambda_layer" [{"compatible_runtimes" ["nodejs20.x"],
                                                                 "filename" "../layer.zip",

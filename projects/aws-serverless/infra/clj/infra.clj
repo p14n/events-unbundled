@@ -323,5 +323,4 @@
       "provider" {"aws" [{"default_tags" [{"tags" {"Component" "aws-serverless"}}]
                           "region" "eu-west-1"}]}
       "variable" {"vpc_id" {}}
-      "output" {"api-gateway-url" {"value" "${aws_api_gateway_deployment.graphql.invoke_url}"}
-                "elasticache_endpoint" {"value" "${aws_elasticache_serverless_cache.response_cache.endpoint}"}}})))
+      "output" {"api-gateway-url" {"value" "${aws_api_gateway_deployment.graphql.invoke_url}"}}})))

@@ -8,6 +8,3 @@ console.log('handler js ', handler);
 export {
     handler
 };
-
-//await loadFile('src/test.cljs');
-

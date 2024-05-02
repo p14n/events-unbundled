@@ -35,14 +35,18 @@
   (ddb/DynamoDBClient. (clj->js {:logger  {:error (fn [l] (js/console.log "DynamoDB error" l))
                                            :info (fn [l] (js/console.log "DynamoDB info" l))
                                            :warning (fn [l] (js/console.log "DynamoDB warning" l))
-                                           :trace (fn [l])
-                                           :debug (fn [l] (js/console.log "DynamoDB debug " l))}})))
+                                           :trace (fn [l] (js/console.log "DynamoDB trace" l))
+                                           :debug (fn [l] (js/console.log "DynamoDB debug" l))}})))
 
 (defn result-item [result]
   (some-> result (js->clj :keywordize-keys true) :Item))
 
+(defn pr> [x msg] (js/console.log msg x) x)
+(defn pr>> [msg x] (js/console.log msg x) x)
+
 (defn item->object [item]
   (->> item
+       (pr>> "Item")
        (map (fn [[k v]] [k (some-> v first last)]))
        (into {})))
 
@@ -50,5 +54,14 @@
   (-> result result-item item->object))
 
 (defn single-item-fetch [db table id]
-  (let [cmd (create-get-item-command table id)]
-    (p/-> (.send db cmd) result->object)))
+  (p/let [result (.send db (create-get-item-command table id))
+          _ (js/console.log result)
+          to-return (some-> result result->object)]
+    (pr> to-return "single-item-fetch")))
+  ;; (let [_ (js/console.log "single-item-fetch" (clj->js id))
+  ;;       cmd (create-get-item-command table id)
+  ;;       _ (js/console.log "single-item-fetch" cmd)]
+  ;;   (p/let [res (-> (.send db cmd)
+  ;;                   (p/catch (fn [err] (js/console.log "single-item-fetch" err))))
+  ;;           obj (some-> res ddb/result->object)]
+  ;;     obj)))

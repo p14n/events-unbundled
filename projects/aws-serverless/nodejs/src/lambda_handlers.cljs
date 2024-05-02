@@ -28,9 +28,10 @@
                                                      "customer-id" {"S" customer-id}}]))
 
 (defn update-customer [_ {:keys [email id invited]}]
-  (ddb/create-table-put-requests "customers" [{"id" {"S" id}
-                                               "email" {"S" email}
-                                               "invited" {"BOOL" invited}}]))
+  (with-meta (ddb/create-table-put-requests "customers" [{"id" {"S" id}
+                                                          "email" {"S" email}
+                                                          "invited" {"BOOL" invited}}])
+    {:type :ProjectionComplete :customer-id id}))
 
 (clj->js {(s/handler-name-kw h/invite-customer) (s/create-lookup-writer-handler h/invite-customer invite-customer-lookup create-customer-email)
           (s/handler-name-kw p/project-customer) (s/create-lookup-writer-handler p/project-customer customer-lookup update-customer)})

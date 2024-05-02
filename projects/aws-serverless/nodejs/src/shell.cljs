@@ -5,6 +5,17 @@
             ["@redis/client" :as redis]
             [common.base.core :as core]))
 
+(defn -js->clj+
+  "For cases when built-in js->clj doesn't work. Source: https://stackoverflow.com/a/32583549/4839573"
+  [x]
+  (into {} (for [k (js-keys x)]
+             [k (aget x k)])))
+
+(defn env
+  "Returns current env vars as a Clojure map."
+  []
+  (-js->clj+ (.-env js/process)))
+
 (defn js->kwclj [j]
   (some-> j (js->clj :keywordize-keys true)))
 
@@ -15,19 +26,24 @@
   (some-> c (clj->js) js/JSON.stringify))
 
 (defn create-redis-client []
-  (doto (redis/createClient (clj->js {:socket {:host "response-queues-gwjcas.serverless.euw1.cache.amazonaws.com"
-                                               :port 6379
+  ;(js/console.log "SSSSSSSSSSSSSS" (clj->json (env)))
+  (doto (redis/createClient (clj->js {:socket {:host (get (env) "REDIS_HOST") ;"response-queues-gwjcas.serverless.euw1.cache.amazonaws.com"
+                                               :port (-> (env)
+                                                         (get "REDIS_PORT")
+                                                         (int)) ;6379
                                                :tls true}}))
     (.on "error" (fn [e] (js/console.error "Error" e)))
     (.connect)))
 
-(def q-client (create-redis-client))
-(def db-client (ddb/create-client))
-
+(defn pr> [x] (js/console.log ">" x) x)
 
 (defn create-event-notify-ch [correlation-id]
-  (p/let [f #(.publish q-client correlation-id %)]
+  (let [q-client (create-redis-client)
+        f #(do
+             (js/console.log "Publish " correlation-id %)
+             (.publish q-client correlation-id %))]
     (fn [e]
+      (js/console.log "Notify " correlation-id (clj->js e))
       (some-> e clj->js js/JSON.stringify f)
       nil)))
 
@@ -63,45 +79,60 @@
                           (js->clj :keywordize-keys true))))]
     event))
 
-(defn- subscribe-response [ch id ctx resolver]
-  (p/let [events (atom [])]
+(defn- subscribe-response [id ctx resolver]
+  (let [events (atom [])
+        q-client (create-redis-client)]
     (js/console.log "Subscribing to response queue " id " " q-client)
-    (.subscribe q-client id
-                (fn [msg _]
-                  (let [v (js->clj (js/JSON.parse msg))]
-                    (js/console.log "Received message" v)
-                    (swap! events conj v)
-                    (p/let [res (resolver ctx @events)]
-                      (js/console.log "Received response" res)
-                      (when res
-                        (.unsubscribe q-client id)
-                        (.unref q-client)
-                        (p/resolve! ch res))))))))
+    (js/Promise.
+     (fn [resolve _reject]
+       (.subscribe q-client id
+                   (fn [msg _]
+                     (let [{:keys [type] :as v} (json->clj msg)]
+                       (js/console.log "Received message" v)
+                       (swap! events conj (assoc v :type (keyword type)))
+                       (-> (.resolve js/Promise (resolver ctx @events))
+                           (.then (fn [res]
+                                    (js/console.log "Received response" (clj->js res))
+                                    (when res
+                                      (.unsubscribe q-client id)
+                                      (.unref q-client)
+                                      (resolve (clj->js res)))))))))))))
 
-(defn write-command [command-name body ctx resolver]
-  (try
-    (js/console.log "Starting command" command-name body)
-    (let [ch (p/deferred)]
-      (p/let [id (core/uuid)
-              _ (js/console.log "Writing command" id command-name (clj->js body))
-              command (-> body
-                          (assoc :type command-name)
-                          (ddb/create-event-record "commands"))
-              _ (subscribe-response ch id ctx resolver)
-              _ (js/console.log "Subscribed to response queue" id)
-              _ (js/console.log "Command" (clj->js command))
-              command-response (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])
-              _ (js/console.log "Sent command" command-response)]
-        ch))
-    (catch js/Error e
-      (js/console.log "Error writing command" e)
-      (js/console.trace e)
-      (.toString e))))
+(defn write-command [command-name body init-ctx resolver] (js/console.log "Starting command" command-name body)
+  (let [id (core/uuid)
+        _ (js/console.log "Writing command" id command-name (clj->js body))
+        command (-> body
+                    (assoc :type command-name :event-id id)
+                    (ddb/create-event-record "commands"))
+        _ (js/console.log "Command" (clj->js command))
+        db-client (ddb/create-client)
+        ctx (assoc init-ctx :db db-client)
+        response-promise (subscribe-response id ctx resolver)]
+    (-> (.all js/Promise
+              [response-promise
+               (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])])
+        (.then #(first %)))
+
+    ;; (-> (do
+    ;;       (js/console.log "Start dynamo")
+    ;;       (-> (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])
+    ;;           (pr>)))
+    ;;     ;(.then (fn [_] ))
+    ;;     (.catch (fn [e] (js/console.log "Error writing command" e)))
+    ;;     (.finally #(do
+    ;;                  (.destroy db-client)
+    ;;                  (.unsubscribe q-client)
+    ;;                  (.unref q-client)
+    ;;                  (js/console.log "DONE"))))
+    ;response-promise
+    ))
 
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]
     (js/console.log "Event received " e)
-    (p/let [event (transalate-event e)
+    (p/let [db-client (ddb/create-client)
+            q-client (create-redis-client)
+            event (transalate-event e)
             correlation-id (:correlation-id event)
             out-topic (handler-topic handler-func)
             event-notify-ch (create-event-notify-ch correlation-id)
@@ -109,13 +140,14 @@
 
             lookup-data (if lookup-func (lookup-func ctx event) {})
             _ (js/console.log "Lookup " (pr-str lookup-data))
-
-            result (some-> (handler-func ctx event lookup-data)
+            handler-output (handler-func ctx event lookup-data)
+            result (some-> handler-output
                            (assoc-if :correlation-id (when out-topic correlation-id)))
             _ (js/console.log "Result " (pr-str result))
+            writer-req (when writer-func
+                         (writer-func ctx result))
             table-requests (when result
-                             (->> [(when writer-func
-                                     (writer-func ctx result))
+                             (->> [writer-req
                                    (when out-topic
                                      (ddb/create-table-put-requests "events" [(ddb/create-event-record result out-topic)]))]
                                   (remove nil?)
@@ -124,8 +156,10 @@
             write-response (when (seq table-requests)
                              (ddb/write-all-table-requests db-client table-requests))
             _ (js/console.log "Write response " (pr-str write-response))]
+      (event-notify-ch (meta writer-req))
       (event-notify-ch result)
       (.unref q-client)
+      (.destroy db-client)
       (http-response 200 result))))
 
 (defn create-lookup-writer-handler [handler-func lookup-func writer-func]

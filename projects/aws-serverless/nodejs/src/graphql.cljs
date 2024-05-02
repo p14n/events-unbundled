@@ -25,12 +25,12 @@
   {:Query {:Customer (fn [c a v]
                        (js/console.log c a v)
                        (let [{:keys [id]} (shell/js->kwclj a)]
-                         (ddb/single-item-fetch shell/db-client "customers" id)))}
+                         (ddb/single-item-fetch (ddb/create-client) "customers" {"id" {"S" id}})))}
    :Mutation {:InviteCustomer (fn [c a v]
                                 (js/console.log c a v)
                                 (shell/write-command "InviteCustomer" (shell/js->kwclj a) {}
                                                      (r/invite-responser
-                                                      (fn [db id] (ddb/single-item-fetch db "customers" id)))))}})
+                                                      (fn [db id] (ddb/single-item-fetch db "customers" {"id" {"S" id}})))))}})
 
 (def server (apollo/ApolloServer. (clj->js {"typeDefs" type-defs
                                             "resolvers" resolvers})))

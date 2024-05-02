@@ -77,9 +77,13 @@
                                     "attach_network_policy" true,
                                     "layers" ["${aws_lambda_layer_version.lambda_layer.arn}"]
                                     "timeout" 10
+                                    "memory_size" 192
                                     "vpc_subnet_ids" "${data.aws_subnets.main.ids}",
                                     "vpc_security_group_ids" ["${aws_security_group.lambda_sg.id}"],
-                                    "source" "terraform-aws-modules/lambda/aws"}]]))
+                                    "source" "terraform-aws-modules/lambda/aws"
+                                    "environment_variables"
+                                    {"REDIS_HOST" "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"address\"]}"
+                                     "REDIS_PORT" "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"port\"]}"}}]]))
 
 (defn synth-lambda-target [rule-name handler]
   {"arn" (str "${module.lambda_function_" handler ".lambda_function_arn}"),
@@ -266,7 +270,7 @@
                                                             (elasticache-policy-attachments (conj all-handler-names "graphql"))
                                                             (ddb-handler-policy-attachments "events" (conj all-handler-names "graphql"))
                                                             (ddb-handler-policy-attachments "customer_emails" ["invitecustomereventhandler"])
-                                                            (ddb-handler-policy-attachments "customers" ["customerprojector"])]),
+                                                            (ddb-handler-policy-attachments "customers" ["customerprojector" "graphql"])]),
                    "aws_lambda_permission" (merge
                                             {"apigw" [{"action" "lambda:InvokeFunction",
                                                        "function_name" "${module.lambda_function_graphql.lambda_function_name}",

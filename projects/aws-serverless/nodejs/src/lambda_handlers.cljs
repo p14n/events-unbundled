@@ -5,23 +5,19 @@
             [projectors :as p]
             [shell :as s]))
 
-(defn prx [x] (js/console.log x) x)
-
 (defn invite-customer-lookup
   [{:keys [db]}
    {:keys [email type]}]
   (case type
     :InviteCustomer
-    (pc/let [result (.send db (ddb/create-get-item-command "customer_emails" {"email" {"S" email}}))
-             to-return {:existing-id (some-> result prx ddb/result-item :customer-id :S)}]
-      (prx to-return))))
+    (pc/let [result (ddb/single-item-fetch db "customer_emails" {"email" {"S" email}})]
+      {:existing-id (some-> result :customer-id)})))
 
 (defn customer-lookup
   [{:keys [db]}
    {:keys [customer-id]}]
-  (pc/let [result (.send db (ddb/create-get-item-command "customers" {"id" {"S" customer-id}}))
-           to-return (some-> result prx ddb/result->object)]
-    (prx to-return)))
+  (pc/let [result (ddb/single-item-fetch db "customers" {"id" {"S" customer-id}})]
+    result))
 
 (defn create-customer-email [_ {:keys [email customer-id]}]
   (ddb/create-table-put-requests "customer_emails" [{"email" {"S" email}

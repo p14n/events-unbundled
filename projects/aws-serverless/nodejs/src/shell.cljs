@@ -26,11 +26,10 @@
   (some-> c (clj->js) js/JSON.stringify))
 
 (defn create-redis-client []
-  ;(js/console.log "SSSSSSSSSSSSSS" (clj->json (env)))
-  (doto (redis/createClient (clj->js {:socket {:host (get (env) "REDIS_HOST") ;"response-queues-gwjcas.serverless.euw1.cache.amazonaws.com"
+  (doto (redis/createClient (clj->js {:socket {:host (get (env) "REDIS_HOST")
                                                :port (-> (env)
                                                          (get "REDIS_PORT")
-                                                         (int)) ;6379
+                                                         (int))
                                                :tls true}}))
     (.on "error" (fn [e] (js/console.error "Error" e)))
     (.connect)))
@@ -104,28 +103,13 @@
         command (-> body
                     (assoc :type command-name :event-id id)
                     (ddb/create-event-record "commands"))
-        _ (js/console.log "Command" (clj->js command))
         db-client (ddb/create-client)
         ctx (assoc init-ctx :db db-client)
         response-promise (subscribe-response id ctx resolver)]
     (-> (.all js/Promise
               [response-promise
                (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])])
-        (.then #(first %)))
-
-    ;; (-> (do
-    ;;       (js/console.log "Start dynamo")
-    ;;       (-> (ddb/write-all-table-requests db-client [(ddb/create-table-put-requests "events" [command])])
-    ;;           (pr>)))
-    ;;     ;(.then (fn [_] ))
-    ;;     (.catch (fn [e] (js/console.log "Error writing command" e)))
-    ;;     (.finally #(do
-    ;;                  (.destroy db-client)
-    ;;                  (.unsubscribe q-client)
-    ;;                  (.unref q-client)
-    ;;                  (js/console.log "DONE"))))
-    ;response-promise
-    ))
+        (.then #(first %)))))
 
 (defn create-handler [handler-func lookup-func writer-func]
   (fn [e _ctx]
@@ -164,10 +148,3 @@
 
 (defn create-lookup-writer-handler [handler-func lookup-func writer-func]
   (create-handler handler-func lookup-func writer-func))
-
-
-
-;; 2024-05-01T17:07:56.672+01:00	2024-05-01T16:07:56.672Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO DynamoDB debug endpoints Resolved endpoint: { "headers": {}, "properties": {}, "url": "https://dynamodb.eu-west-1.amazonaws.com/" }
-;; 2024-05-01T17:07:56.991+01:00	2024-05-01T16:07:56.991Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO DynamoDB info { clientName: 'DynamoDBClient', commandName: 'BatchWriteItemCommand', input: { RequestItems: { events: [Array] } }, output: { UnprocessedItems: {} }, metadata: { httpStatusCode: 200, requestId: 'N5881TE3OG42SVJ8TM2K8Q93EBVV4KQNSO5AEMVJF66Q9ASUAAJG', extendedRequestId: undefined, cfId: undefined, attempts: 1, totalRetryDelay: 0 } }
-;; 2024-05-01T17:07:56.991+01:00	2024-05-01T16:07:56.991Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO Sent command { '$metadata': { httpStatusCode: 200, requestId: 'N5881TE3OG42SVJ8TM2K8Q93EBVV4KQNSO5AEMVJF66Q9ASUAAJG', extendedRequestId: undefined, cfId: undefined, attempts: 1, totalRetryDelay: 0 }, UnprocessedItems: {} }
-;; 2024-05-01T17:07:56.991+01:00	2024-05-01T16:07:56.991Z f24c6ddf-b215-40d2-b85e-cddba52aa12c INFO Resolver response undefined

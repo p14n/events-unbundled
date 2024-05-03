@@ -1,4 +1,4 @@
-**/.clj-kondo
+**/.clj-kondo/.cache
 **/.lsp
 **/.lsp-cache
 **/.nrepl-port
@@ -6,3 +6,14 @@
 **/.cpcache
 **/.calva
 **/target
+**/.nbb
+**/node_modules
+**/.DS_Store
+**/.terraform
+**/transient.tf.json
+**/*.zip
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/*.*~
+**/*.tfvars

@@ -1,6 +1,5 @@
 (ns simple-db.core
-  (:require [common.core :as cc]
-            [handlers :as h]
+  (:require [handlers :as h]
             [projectors :as p]
             [resolvers :as r]
             [common.protocol :as prot]))

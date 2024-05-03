@@ -1,0 +1,32 @@
+{:paths ["infra/clj"]
+ :min-bb-version "0.4.0"
+ :deps {functions/functions {:local/root "../../../functions"}}
+ :tasks
+ {:requires ([infra :as inf]
+             [lambda-handlers :as lh]
+             [cheshire.core :as json]
+             [clojure.string :as str])
+
+
+  synth {:doc "Creates terraform"
+         :task (->> (json/generate-string (inf/synth lh/all) {:pretty true})
+                    (spit "./infra/transient.tf.json"))}
+
+  zip-lambda {:doc "Zips lambda"
+              :task (shell {:dir "./nodejs"} "zip -FSr lambda.zip . -x \"node_modules/*\"")}
+
+  zip-layer {:doc "Zips layer"
+             :task (do
+                     (shell "zip -FSr layer.zip nodejs/node_modules/"))}
+
+  nbb-deps {:doc "Installs nbb dependencies"
+            :task (shell {:dir "./nodejs"} "nbb -e \"(println \\\"Installed deps\\\")\"")}
+
+  build {:doc "Creates terraform and zips lambda"
+         :depends [synth nbb-deps zip-layer zip-lambda]}
+
+  tf {:doc "Builds and runs terraform"
+      :depends [build]
+      :task (shell {:dir "./infra"} (str "terraform " (str/join " " *command-line-args*)))}}}
+
+

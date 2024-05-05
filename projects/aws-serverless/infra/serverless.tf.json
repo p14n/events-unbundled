@@ -1,0 +1,385 @@
+{
+  "module" : {
+    "dynamodb_table_events" : {
+      "attributes" : [ {
+        "name" : "event-id",
+        "type" : "S"
+      }, {
+        "name" : "created",
+        "type" : "S"
+      } ],
+      "hash_key" : "event-id",
+      "name" : "events",
+      "source" : "terraform-aws-modules/dynamodb-table/aws",
+      "range_key" : "created",
+      "stream_enabled" : true,
+      "stream_view_type" : "NEW_IMAGE"
+    },
+    "dynamodb_table_customer_emails" : {
+      "attributes" : [ {
+        "name" : "email",
+        "type" : "S"
+      } ],
+      "hash_key" : "email",
+      "name" : "customer_emails",
+      "source" : "terraform-aws-modules/dynamodb-table/aws"
+    },
+    "dynamodb_table_customers" : {
+      "attributes" : [ {
+        "name" : "id",
+        "type" : "S"
+      } ],
+      "hash_key" : "id",
+      "name" : "customers",
+      "source" : "terraform-aws-modules/dynamodb-table/aws"
+    },
+    "eventbridge" : [ {
+      "bus_name" : "eventbridge-producer-events",
+      "rules" : {
+        "customer_events" : {
+          "description" : "Capture all customer events",
+          "enabled" : true,
+          "event_pattern" : "{\"detail\":{\"topic\":[\"customer\"]}}"
+        },
+        "commands_events" : {
+          "description" : "Capture all commands events",
+          "enabled" : true,
+          "event_pattern" : "{\"detail\":{\"topic\":[\"commands\"]}}"
+        }
+      },
+      "targets" : {
+        "customer_events" : [ {
+          "arn" : "${module.lambda_function_customerprojector.lambda_function_arn}",
+          "name" : "send-customer_events-to-customerprojector"
+        } ],
+        "commands_events" : [ {
+          "arn" : "${module.lambda_function_invitecustomereventhandler.lambda_function_arn}",
+          "name" : "send-commands_events-to-invitecustomereventhandler"
+        } ]
+      },
+      "source" : "terraform-aws-modules/eventbridge/aws"
+    } ],
+    "lambda_function_invitecustomereventhandler" : [ {
+      "create_package" : false,
+      "handler" : "index.lambdas.invitecustomereventhandler",
+      "function_name" : "invitecustomereventhandler",
+      "runtime" : "nodejs20.x",
+      "vpc_subnet_ids" : "${data.aws_subnets.main.ids}",
+      "environment_variables" : {
+        "REDIS_HOST" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"address\"]}",
+        "REDIS_PORT" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"port\"]}"
+      },
+      "timeout" : 10,
+      "memory_size" : 192,
+      "attach_network_policy" : true,
+      "vpc_security_group_ids" : [ "${aws_security_group.lambda_sg.id}" ],
+      "source" : "terraform-aws-modules/lambda/aws",
+      "layers" : [ "${aws_lambda_layer_version.lambda_layer.arn}" ],
+      "local_existing_package" : "../nodejs/lambda.zip",
+      "description" : "Lambda function invitecustomereventhandler"
+    } ],
+    "lambda_function_customerprojector" : [ {
+      "create_package" : false,
+      "handler" : "index.lambdas.customerprojector",
+      "function_name" : "customerprojector",
+      "runtime" : "nodejs20.x",
+      "vpc_subnet_ids" : "${data.aws_subnets.main.ids}",
+      "environment_variables" : {
+        "REDIS_HOST" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"address\"]}",
+        "REDIS_PORT" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"port\"]}"
+      },
+      "timeout" : 10,
+      "memory_size" : 192,
+      "attach_network_policy" : true,
+      "vpc_security_group_ids" : [ "${aws_security_group.lambda_sg.id}" ],
+      "source" : "terraform-aws-modules/lambda/aws",
+      "layers" : [ "${aws_lambda_layer_version.lambda_layer.arn}" ],
+      "local_existing_package" : "../nodejs/lambda.zip",
+      "description" : "Lambda function customerprojector"
+    } ],
+    "lambda_function_graphql" : [ {
+      "create_package" : false,
+      "handler" : "graphql.handler",
+      "function_name" : "graphql",
+      "runtime" : "nodejs20.x",
+      "vpc_subnet_ids" : "${data.aws_subnets.main.ids}",
+      "environment_variables" : {
+        "REDIS_HOST" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"address\"]}",
+        "REDIS_PORT" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0][\"port\"]}"
+      },
+      "timeout" : 10,
+      "memory_size" : 192,
+      "attach_network_policy" : true,
+      "vpc_security_group_ids" : [ "${aws_security_group.lambda_sg.id}" ],
+      "source" : "terraform-aws-modules/lambda/aws",
+      "layers" : [ "${aws_lambda_layer_version.lambda_layer.arn}" ],
+      "local_existing_package" : "../nodejs/lambda.zip",
+      "description" : "Lambda function graphql"
+    } ]
+  },
+  "resource" : {
+    "aws_iam_role_policy_attachment" : {
+      "ddb_customers_pa_graphql" : [ {
+        "policy_arn" : "${aws_iam_policy.ddb_customers_policy.arn}",
+        "role" : "${module.lambda_function_graphql.lambda_role_name}"
+      } ],
+      "elasticache_pa_invitecustomereventhandler" : [ {
+        "policy_arn" : "${aws_iam_policy.elasticache_policy.arn}",
+        "role" : "${module.lambda_function_invitecustomereventhandler.lambda_role_name}"
+      } ],
+      "elasticache_pa_customerprojector" : [ {
+        "policy_arn" : "${aws_iam_policy.elasticache_policy.arn}",
+        "role" : "${module.lambda_function_customerprojector.lambda_role_name}"
+      } ],
+      "ddb_events_pa_graphql" : [ {
+        "policy_arn" : "${aws_iam_policy.ddb_events_policy.arn}",
+        "role" : "${module.lambda_function_graphql.lambda_role_name}"
+      } ],
+      "ddb_events_pa_customerprojector" : [ {
+        "policy_arn" : "${aws_iam_policy.ddb_events_policy.arn}",
+        "role" : "${module.lambda_function_customerprojector.lambda_role_name}"
+      } ],
+      "pipe_policy_attachment" : [ {
+        "policy_arn" : "${aws_iam_policy.pipe_policy.arn}",
+        "role" : "${aws_iam_role.pipe_role.name}"
+      } ],
+      "ddb_events_pa_invitecustomereventhandler" : [ {
+        "policy_arn" : "${aws_iam_policy.ddb_events_policy.arn}",
+        "role" : "${module.lambda_function_invitecustomereventhandler.lambda_role_name}"
+      } ],
+      "ddb_customers_pa_customerprojector" : [ {
+        "policy_arn" : "${aws_iam_policy.ddb_customers_policy.arn}",
+        "role" : "${module.lambda_function_customerprojector.lambda_role_name}"
+      } ],
+      "ddb_customer_emails_pa_invitecustomereventhandler" : [ {
+        "policy_arn" : "${aws_iam_policy.ddb_customer_emails_policy.arn}",
+        "role" : "${module.lambda_function_invitecustomereventhandler.lambda_role_name}"
+      } ],
+      "elasticache_pa_graphql" : [ {
+        "policy_arn" : "${aws_iam_policy.elasticache_policy.arn}",
+        "role" : "${module.lambda_function_graphql.lambda_role_name}"
+      } ]
+    },
+    "aws_security_group" : {
+      "elasticache_sg" : [ {
+        "description" : "Allow traffic to elasticache",
+        "name" : "elasticache_sg",
+        "vpc_id" : "${data.aws_vpc.main.id}"
+      } ],
+      "lambda_sg" : [ {
+        "description" : "Allow traffic to elasticache and dynamo",
+        "name" : "lambda_sg",
+        "vpc_id" : "${data.aws_vpc.main.id}"
+      } ]
+    },
+    "aws_api_gateway_method" : {
+      "proxy" : [ {
+        "authorization" : "NONE",
+        "http_method" : "ANY",
+        "resource_id" : "${aws_api_gateway_resource.proxy.id}",
+        "rest_api_id" : "${aws_api_gateway_rest_api.graphql.id}"
+      } ],
+      "proxy_root" : [ {
+        "authorization" : "NONE",
+        "http_method" : "ANY",
+        "resource_id" : "${aws_api_gateway_rest_api.graphql.root_resource_id}",
+        "rest_api_id" : "${aws_api_gateway_rest_api.graphql.id}"
+      } ]
+    },
+    "aws_api_gateway_rest_api" : {
+      "graphql" : [ {
+        "description" : "Graphql API",
+        "name" : "Graphql"
+      } ]
+    },
+    "aws_vpc_security_group_ingress_rule" : {
+      "elasticache_ingress" : [ {
+        "cidr_ipv4" : "${data.aws_vpc.main.cidr_block}",
+        "from_port" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
+        "ip_protocol" : "tcp",
+        "security_group_id" : "${aws_security_group.elasticache_sg.id}",
+        "to_port" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"
+      } ]
+    },
+    "aws_lambda_layer_version" : {
+      "lambda_layer" : [ {
+        "compatible_runtimes" : [ "nodejs20.x" ],
+        "filename" : "../layer.zip",
+        "layer_name" : "events_unbundled"
+      } ]
+    },
+    "aws_elasticache_serverless_cache" : {
+      "response_cache" : [ {
+        "cache_usage_limits" : [ {
+          "data_storage" : [ {
+            "maximum" : 1,
+            "unit" : "GB"
+          } ],
+          "ecpu_per_second" : [ {
+            "maximum" : 1000
+          } ]
+        } ],
+        "description" : "Response queues",
+        "engine" : "redis",
+        "name" : "response-queues",
+        "subnet_ids" : "${data.aws_subnets.main.ids}",
+        "security_group_ids" : [ "${aws_security_group.elasticache_sg.id}" ]
+      } ]
+    },
+    "aws_pipes_pipe" : {
+      "events_pipe" : [ {
+        "name" : "events-pipe",
+        "role_arn" : "${aws_iam_role.pipe_role.arn}",
+        "source" : "${module.dynamodb_table_events.dynamodb_table_stream_arn}",
+        "source_parameters" : [ {
+          "dynamodb_stream_parameters" : [ {
+            "batch_size" : 1,
+            "starting_position" : "LATEST"
+          } ]
+        } ],
+        "target" : "${module.eventbridge.eventbridge_bus_arn}",
+        "target_parameters" : {
+          "input_template" : "{\"event-id\":\"<$.dynamodb.NewImage.event-id.S>\",\"correlation-id\":\"<$.dynamodb.NewImage.correlation-id.S>\",\"topic\":\"<$.dynamodb.NewImage.topic.S>\",\"type\":\"<$.dynamodb.NewImage.type.S>\",\"created\":\"<$.dynamodb.NewImage.created.S>\",\"body\":\"<$.dynamodb.NewImage.body.S>\"}"
+        }
+      } ]
+    },
+    "aws_lambda_permission" : {
+      "apigw" : [ {
+        "action" : "lambda:InvokeFunction",
+        "function_name" : "${module.lambda_function_graphql.lambda_function_name}",
+        "principal" : "apigateway.amazonaws.com",
+        "source_arn" : "${aws_api_gateway_rest_api.graphql.execution_arn}/*/*/*",
+        "statement_id" : "AllowAPIGatewayInvoke"
+      } ],
+      "customer_events_customerprojector" : [ {
+        "action" : "lambda:InvokeFunction",
+        "function_name" : "${module.lambda_function_customerprojector.lambda_function_name}",
+        "principal" : "events.amazonaws.com",
+        "source_arn" : "${module.eventbridge.eventbridge_rule_arns[\"customer_events\"]}"
+      } ],
+      "commands_events_invitecustomereventhandler" : [ {
+        "action" : "lambda:InvokeFunction",
+        "function_name" : "${module.lambda_function_invitecustomereventhandler.lambda_function_name}",
+        "principal" : "events.amazonaws.com",
+        "source_arn" : "${module.eventbridge.eventbridge_rule_arns[\"commands_events\"]}"
+      } ]
+    },
+    "aws_api_gateway_resource" : {
+      "proxy" : [ {
+        "parent_id" : "${aws_api_gateway_rest_api.graphql.root_resource_id}",
+        "path_part" : "{proxy+}",
+        "rest_api_id" : "${aws_api_gateway_rest_api.graphql.id}"
+      } ]
+    },
+    "aws_vpc_security_group_egress_rule" : {
+      "elasticache_egress" : [ {
+        "cidr_ipv4" : "${data.aws_vpc.main.cidr_block}",
+        "from_port" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}",
+        "ip_protocol" : "tcp",
+        "security_group_id" : "${aws_security_group.lambda_sg.id}",
+        "to_port" : "${aws_elasticache_serverless_cache.response_cache.endpoint[0].port}"
+      } ],
+      "dynamodb_egress" : [ {
+        "cidr_ipv4" : "0.0.0.0/0",
+        "from_port" : 443,
+        "ip_protocol" : "tcp",
+        "security_group_id" : "${aws_security_group.lambda_sg.id}",
+        "to_port" : 443
+      } ]
+    },
+    "aws_api_gateway_integration" : {
+      "lambda" : [ {
+        "http_method" : "${aws_api_gateway_method.proxy.http_method}",
+        "integration_http_method" : "POST",
+        "resource_id" : "${aws_api_gateway_method.proxy.resource_id}",
+        "rest_api_id" : "${aws_api_gateway_rest_api.graphql.id}",
+        "type" : "AWS_PROXY",
+        "uri" : "${module.lambda_function_graphql.lambda_function_invoke_arn}"
+      } ],
+      "lambda_root" : [ {
+        "http_method" : "${aws_api_gateway_method.proxy_root.http_method}",
+        "integration_http_method" : "POST",
+        "resource_id" : "${aws_api_gateway_method.proxy_root.resource_id}",
+        "rest_api_id" : "${aws_api_gateway_rest_api.graphql.id}",
+        "type" : "AWS_PROXY",
+        "uri" : "${module.lambda_function_graphql.lambda_function_invoke_arn}"
+      } ]
+    },
+    "aws_iam_policy" : {
+      "pipe_policy" : [ {
+        "name" : "pipe-policy",
+        "policy" : "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"dynamodb:DescribeStream\",\"dynamodb:GetRecords\",\"dynamodb:GetShardIterator\",\"dynamodb:ListStreams\",\"events:PutEvents\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"
+      } ],
+      "elasticache_policy" : [ {
+        "name" : "elasticache-policy",
+        "policy" : "{\"Statement\":[{\"Action\":[\"elasticache:Connect\"],\"Effect\":\"Allow\",\"Resource\":[\"*\"]}],\"Version\":\"2012-10-17\"}"
+      } ],
+      "ddb_events_policy" : [ {
+        "name" : "ddb_events_policy",
+        "policy" : "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DynamoDBIndexAndStreamAccess\",\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetShardIterator\",\"dynamodb:Scan\",\"dynamodb:Query\",\"dynamodb:DescribeStream\",\"dynamodb:GetRecords\",\"dynamodb:ListStreams\"],\"Resource\":[\"arn:aws:dynamodb:*:*:table/events/index/*\",\"arn:aws:dynamodb:*:*:table/events/stream/*\"]},{\"Sid\":\"DynamoDBTableAccess\",\"Effect\":\"Allow\",\"Action\":[\"dynamodb:BatchGetItem\",\"dynamodb:BatchWriteItem\",\"dynamodb:ConditionCheckItem\",\"dynamodb:PutItem\",\"dynamodb:DescribeTable\",\"dynamodb:DeleteItem\",\"dynamodb:GetItem\",\"dynamodb:Scan\",\"dynamodb:Query\",\"dynamodb:UpdateItem\"],\"Resource\":\"arn:aws:dynamodb:*:*:table/events\"},{\"Sid\":\"DynamoDBDescribeLimitsAccess\",\"Effect\":\"Allow\",\"Action\":\"dynamodb:DescribeLimits\",\"Resource\":[\"arn:aws:dynamodb:*:*:table/events\",\"arn:aws:dynamodb:*:*:table/events/index/*\"]}]}"
+      } ],
+      "ddb_customer_emails_policy" : [ {
+        "name" : "ddb_customer_emails_policy",
+        "policy" : "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DynamoDBIndexAndStreamAccess\",\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetShardIterator\",\"dynamodb:Scan\",\"dynamodb:Query\",\"dynamodb:DescribeStream\",\"dynamodb:GetRecords\",\"dynamodb:ListStreams\"],\"Resource\":[\"arn:aws:dynamodb:*:*:table/customer_emails/index/*\",\"arn:aws:dynamodb:*:*:table/customer_emails/stream/*\"]},{\"Sid\":\"DynamoDBTableAccess\",\"Effect\":\"Allow\",\"Action\":[\"dynamodb:BatchGetItem\",\"dynamodb:BatchWriteItem\",\"dynamodb:ConditionCheckItem\",\"dynamodb:PutItem\",\"dynamodb:DescribeTable\",\"dynamodb:DeleteItem\",\"dynamodb:GetItem\",\"dynamodb:Scan\",\"dynamodb:Query\",\"dynamodb:UpdateItem\"],\"Resource\":\"arn:aws:dynamodb:*:*:table/customer_emails\"},{\"Sid\":\"DynamoDBDescribeLimitsAccess\",\"Effect\":\"Allow\",\"Action\":\"dynamodb:DescribeLimits\",\"Resource\":[\"arn:aws:dynamodb:*:*:table/customer_emails\",\"arn:aws:dynamodb:*:*:table/customer_emails/index/*\"]}]}"
+      } ],
+      "ddb_customers_policy" : [ {
+        "name" : "ddb_customers_policy",
+        "policy" : "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DynamoDBIndexAndStreamAccess\",\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetShardIterator\",\"dynamodb:Scan\",\"dynamodb:Query\",\"dynamodb:DescribeStream\",\"dynamodb:GetRecords\",\"dynamodb:ListStreams\"],\"Resource\":[\"arn:aws:dynamodb:*:*:table/customers/index/*\",\"arn:aws:dynamodb:*:*:table/customers/stream/*\"]},{\"Sid\":\"DynamoDBTableAccess\",\"Effect\":\"Allow\",\"Action\":[\"dynamodb:BatchGetItem\",\"dynamodb:BatchWriteItem\",\"dynamodb:ConditionCheckItem\",\"dynamodb:PutItem\",\"dynamodb:DescribeTable\",\"dynamodb:DeleteItem\",\"dynamodb:GetItem\",\"dynamodb:Scan\",\"dynamodb:Query\",\"dynamodb:UpdateItem\"],\"Resource\":\"arn:aws:dynamodb:*:*:table/customers\"},{\"Sid\":\"DynamoDBDescribeLimitsAccess\",\"Effect\":\"Allow\",\"Action\":\"dynamodb:DescribeLimits\",\"Resource\":[\"arn:aws:dynamodb:*:*:table/customers\",\"arn:aws:dynamodb:*:*:table/customers/index/*\"]}]}"
+      } ]
+    },
+    "aws_vpc_endpoint" : {
+      "dynamodb" : {
+        "service_name" : "com.amazonaws.eu-west-1.dynamodb",
+        "vpc_id" : "${data.aws_vpc.main.id}",
+        "route_table_ids" : [ "${data.aws_vpc.main.main_route_table_id}" ]
+      }
+    },
+    "aws_iam_role" : {
+      "pipe_role" : [ {
+        "assume_role_policy" : "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"pipes.amazonaws.com\"}}]}",
+        "description" : "Role for pipe",
+        "name" : "pipe-role"
+      } ]
+    },
+    "aws_api_gateway_deployment" : {
+      "graphql" : [ {
+        "depends_on" : [ "aws_api_gateway_integration.lambda", "aws_api_gateway_integration.lambda_root" ],
+        "rest_api_id" : "${aws_api_gateway_rest_api.graphql.id}",
+        "stage_name" : "live"
+      } ]
+    }
+  },
+  "data" : {
+    "aws_vpc" : {
+      "main" : {
+        "id" : "${var.vpc_id}"
+      }
+    },
+    "aws_subnets" : {
+      "main" : {
+        "filter" : [ {
+          "name" : "vpc-id",
+          "values" : [ "${data.aws_vpc.main.id}" ]
+        } ]
+      }
+    }
+  },
+  "provider" : {
+    "aws" : [ {
+      "default_tags" : [ {
+        "tags" : {
+          "Component" : "aws-serverless"
+        }
+      } ],
+      "region" : "eu-west-1"
+    } ]
+  },
+  "variable" : {
+    "vpc_id" : { }
+  },
+  "output" : {
+    "api-gateway-url" : {
+      "value" : "${aws_api_gateway_deployment.graphql.invoke_url}"
+    }
+  }
+}

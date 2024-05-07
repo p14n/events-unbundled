@@ -95,7 +95,7 @@
 
 (def with-system
   (create-system [invite-customer-datomic]
-                 [(r/invite-responser #(->> (da/pull (da/db %1) '[*]  [:customer/id %2])
+                 [(r/invite-responder #(->> (da/pull (da/db %1) '[*]  [:customer/id %2])
                                             (map (fn [[k v]] [(-> k name keyword) v]))
                                             (into {})))]))
 

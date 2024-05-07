@@ -85,7 +85,7 @@
 (def with-system
   (create-system [invite-customer-xtdb
                   project-customer-xtdb]
-                 [(r/invite-responser #(xt/entity (xt/db %1) %2))]))
+                 [(r/invite-responder #(xt/entity (xt/db %1) %2))]))
 
 (defonce state (atom nil))
 (defonce instance (atom (future ::never-run)))

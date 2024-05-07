@@ -32,5 +32,5 @@
 
 
 (def invite-response
-  (r/invite-responser #(get (deref %1) %2)))
+  (r/invite-responder #(get (deref %1) %2)))
     

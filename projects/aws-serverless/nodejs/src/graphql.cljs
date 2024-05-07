@@ -31,7 +31,7 @@
    :Mutation {:InviteCustomer (fn [c a v]
                                 (js/console.log c a v)
                                 (shell/write-command "InviteCustomer" (shell/js->kwclj a) {}
-                                                     (r/invite-responser
+                                                     (r/invite-responder
                                                       (fn [db id] (ddb/single-item-fetch db "customers" {"id" {"S" id}})))))}})
 
 (def server (apollo/ApolloServer. (clj->js {"typeDefs" type-defs

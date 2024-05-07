@@ -1,7 +1,7 @@
 (ns resolvers
   (:require [common.base.core :refer [first-of-type]]))
 
-(defn invite-responser [db-lookup]
+(defn invite-responder [db-lookup]
   ^{:type :InviteCustomer}
   (fn [{:keys [db]} events]
     (println "invite-response" events)

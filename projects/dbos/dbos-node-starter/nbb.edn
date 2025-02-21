@@ -1,0 +1,2 @@
+{:deps {common/base {:local/root "../../../components/common"}
+        functions/functions {:local/root "../../../functions"}}}

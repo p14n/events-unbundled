@@ -1,6 +1,7 @@
 import { DBOS } from "@dbos-inc/dbos-sdk";
 import express from "express";
 import path from "path";
+import { lambdas } from './index.js'
 
 // Welcome to DBOS!
 // This is a template application built with DBOS and Express.
@@ -28,7 +29,8 @@ export class MyApp {
   @DBOS.step()
   static async backgroundTaskStep(step: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    DBOS.logger.info(`Completed step ${step}!`);
+    const { inviteCustomer } = lambdas;
+    DBOS.logger.info(`Completed step ${JSON.stringify(inviteCustomer(step))}`);
   }
 }
 
@@ -37,7 +39,7 @@ app.get("/background/:taskid/:steps", async (req, res) => {
     const { taskid, steps } = req.params;
     await DBOS.startWorkflow(MyApp, { workflowID: taskid }).backgroundTask(Number(steps));
     res.send("Task launched!");
-  }
+    }
 );
 
 // This endpoint retrieves the status of a specific background task.

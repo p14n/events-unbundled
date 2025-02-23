@@ -1,78 +1,58 @@
-import { DBOS } from "@dbos-inc/dbos-sdk";
-import express from "express";
-import path from "path";
-import { lambdas } from './index.js'
-
-// Welcome to DBOS!
-// This is a template application built with DBOS and Express.
-// It shows you how to use DBOS to build background tasks that are resilient to any failure.
-
-export const app = express();
-app.use(express.json());
-
-const stepsEvent = "steps_event";
+import { ArgSource, ArgSources, DBOS } from "@dbos-inc/dbos-sdk";
+import { handlers } from './clj.js'
+import { send } from '@koa/send';
 
 export class MyApp {
-  // This workflow simulates a background task with N steps.
 
-  // DBOS workflows are resilient to any failure--if your program is crashed,
-  // interrupted, or restarted while running this workflow, the workflow automatically
-  // resumes from the last completed step.
-  @DBOS.workflow()
-  static async backgroundTask(n: number): Promise<void> {
-    for (let i = 1; i <= n; i++) {
-      await MyApp.backgroundTaskStep(i);
-      await DBOS.setEvent(stepsEvent, i);
-    }
-  }
-
+  @DBOS.transaction({readOnly: true})
   @DBOS.step()
-  static async backgroundTaskStep(step: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const { inviteCustomer } = lambdas;
-    DBOS.logger.info(`Completed step ${JSON.stringify(inviteCustomer(step))}`);
+  static inviteCustomerLookup(event: any): Promise<any> {
+    const { inviteCustomer } = handlers;
+    return inviteCustomer.lookup(event);
+  }
+
+  @DBOS.transaction({readOnly: false})
+  @DBOS.step()
+  static inviteCustomerWrite(event: any): Promise<any> {
+    const { inviteCustomer } = handlers;
+    return inviteCustomer.write(event);
+  }
+
+  @DBOS.workflow()
+  static async inviteCustomer(event: any): Promise<void> {
+    const { inviteCustomer } = handlers;
+    const lookup = inviteCustomer.lookup ? await MyApp.inviteCustomerLookup(event) : {};
+    DBOS.logger.info(`Completed lookup ${JSON.stringify(lookup)}`);
+    const newEvent = inviteCustomer.handler(event,lookup);
+    DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
+    await (inviteCustomer.write && newEvent ? MyApp.inviteCustomerWrite(newEvent) : Promise.resolve());
+    DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
+    if (newEvent) await DBOS.setEvent("event", newEvent);
   }
 }
 
-// This endpoint uses DBOS to idempotently launch a crashproof background task with N steps.
-app.get("/background/:taskid/:steps", async (req, res) => {
-    const { taskid, steps } = req.params;
-    await DBOS.startWorkflow(MyApp, { workflowID: taskid }).backgroundTask(Number(steps));
-    res.send("Task launched!");
-    }
-);
+export class AppServer {
 
-// This endpoint retrieves the status of a specific background task.
-app.get("/last_step/:taskid", async (req, res) => {
-    const { taskid } = req.params;
-    const step = await DBOS.getEvent(taskid, stepsEvent);
-    res.send(String(step !== null ? step : 0));
+  @DBOS.getApi('/background/:taskid/:steps')
+  static async inviteCustomerRoute(@ArgSource(ArgSources.URL) taskid: string) {
+    await DBOS.startWorkflow(MyApp, { workflowID: taskid }).inviteCustomer({type: "InviteCustomer", email: "test@test.com"});
+    return "Task launched!";
   }
-);
 
-// This endpoint crashes the application. For demonstration purposes only :)
-app.post("/crash", (_, _res): void => {
-  process.exit(1);
-});
 
-// This code serves the HTML readme from the root path.
-app.get("/", (_, res) => {
-  const filePath = path.resolve(__dirname, "..", "html", "app.html");
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      console.log(err);
-      res.status(500).send("Internal Server Error");
-    }
-  });
-});
+  @DBOS.getApi('/last_step/:taskid')
+  static async getTask(@ArgSource(ArgSources.URL) taskid: string) {
+    return 10;
+  }
 
-// Launch DBOS and start the Express.js server
-async function main() {
-  await DBOS.launch({ expressApp: app });
-  const PORT = DBOS.runtimeConfig?.port || 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  });
-}
+  @DBOS.postApi('/crash')
+  static async crash() {
+    process.exit(1);
+  }
 
-main().catch(console.log);
+  @DBOS.getApi('/')
+  static async serve() {
+      return send(DBOS.koaContext, "app.html", {root: 'html'}); // Adjust root to point to directory w/ files
+  }
+
+} 

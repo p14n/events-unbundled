@@ -5,11 +5,18 @@
 
 language: node
 runtimeConfig:
-  start:
-    - node dist/main.js
+  entrypoints:
+    - "dist/main.js"
 database:
+  hostname: "127.0.0.1"
+  port: 5432
+  username: "postgres"
+  password: "dbos"
+  app_db_client: knex
   migrate:
-    - echo 'No migrations specified'
+    - npx knex --knexfile knexfile.cjs migrate:latest
+  rollback:
+    - npx knex --knexfile knexfile.cjs migrate:rollback
 telemetry:
   logs:
     logLevel: 'info'

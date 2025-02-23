@@ -1,7 +1,7 @@
 {
   "name": "dbos-node-starter",
   "version": "0.0.1",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "nodemon",
@@ -9,12 +9,13 @@
   },
   "devDependencies": {
     "@dbos-inc/dbos-cloud": "^2.3.10",
+    "nbb": "^1.2.187",
     "nodemon": "^3.1.0",
-    "typescript": "^5.4.5",
-    "nbb": "^1.2.187"
+    "typescript": "^5.4.5"
   },
   "dependencies": {
     "@dbos-inc/dbos-sdk": "^2.3.10",
+    "@koa/send": "^6.0.0",
     "express": "^4.21.2"
   }
 }

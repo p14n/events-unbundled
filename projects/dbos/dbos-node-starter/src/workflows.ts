@@ -10,21 +10,12 @@ export class Workflows {
     return inviteCustomer.lookup(event);
   }
 
-  @DBOS.transaction({readOnly: false})
-  @DBOS.step()
-  static inviteCustomerWrite(event: any): Promise<any> {
-    const { inviteCustomer } = handlers;
-    return inviteCustomer.write(event);
-  }
-
   @DBOS.workflow()
   static async inviteCustomer(event: any): Promise<void> {
     const { inviteCustomer } = handlers;
-    const lookup = inviteCustomer.lookup ? await Workflows.inviteCustomerLookup(event) : {};
+    const lookup = await Workflows.inviteCustomerLookup(event);
     DBOS.logger.info(`Completed lookup ${JSON.stringify(lookup)}`);
     const newEvent = inviteCustomer.handler(event,lookup);
-    DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
-    await (inviteCustomer.write && newEvent ? Workflows.inviteCustomerWrite(newEvent) : Promise.resolve());
     DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
     if (newEvent) await DBOS.setEvent("event", newEvent);
   }

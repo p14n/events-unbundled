@@ -3,12 +3,13 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "nbb --classpath src scripts/generate.clj && tsc",
     "dev": "nodemon",
     "start": "npx dbos start"
   },
   "devDependencies": {
     "@dbos-inc/dbos-cloud": "^2.3.10",
+    "mustache": "^4.2.0",
     "nbb": "^1.2.187",
     "nodemon": "^3.1.0",
     "typescript": "^5.4.5"

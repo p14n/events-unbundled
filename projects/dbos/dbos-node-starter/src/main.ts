@@ -1,6 +1,6 @@
 import { ArgSource, ArgSources, DBOS } from "@dbos-inc/dbos-sdk";
 import { send } from '@koa/send';
-import { Workflows } from './workflows.js'
+import { Workflows } from './Workflows.js'
 
 export class AppServer {
 

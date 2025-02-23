@@ -28,7 +28,7 @@ export class {{name}} {
 
   {{/hasWrite}}
   @DBOS.workflow()
-  static async {{hname}}(event: any): Promise<void> {
+  static async {{hname}}(event: any): Promise<any> {
     const { {{hname}} } = handlers;
   {{#hasLookup}}
     const lookup = await Workflows.{{hname}}Lookup(event);
@@ -38,12 +38,16 @@ export class {{name}} {
     const lookup = {};
   {{/hasLookup}}
     const newEvent = {{hname}}.handler(event,lookup);
-    DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
+    DBOS.logger.info(`Completed handler ${JSON.stringify(newEvent)}`);
   {{#hasWrite}}
-    await newEvent ? Workflows.{{hname}}Write(newEvent) : Promise.resolve());
+    await newEvent ? Workflows.{{hname}}Write(newEvent) : Promise.resolve();
     DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
   {{/hasWrite}}
-    if (newEvent) await DBOS.setEvent(\"event\", newEvent);
+    if (newEvent) {
+      DBOS.setEvent(\"event\", newEvent);
+      return newEvent;
+    }
+    return DBOS.recv(\"notify\",1);
   }
 {{/handlers}}           
 }")

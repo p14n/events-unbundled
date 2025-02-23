@@ -10,6 +10,11 @@ export class AppServer {
     return "Task launched!";
   }
 
+  @DBOS.getApi('/customer/invite/:email')
+  static async inviteCustomer(@ArgSource(ArgSources.URL) email: string) {
+    const handle = await DBOS.startWorkflow(Workflows, {}).inviteCustomer({type: "InviteCustomer", email: email});
+    return await handle.getResult();
+  }
 
   @DBOS.getApi('/last_step/:taskid')
   static async getTask(@ArgSource(ArgSources.URL) taskid: string) {

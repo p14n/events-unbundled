@@ -26,6 +26,13 @@
       (assoc ek :type (keyword type))
       ek)))
 
+;; (defn make-handler [handler]
+;;   (with-meta (fn [event lookup]
+;;                (clj->js (handler ctx
+;;                                  (js->clj-event event)
+;;                                  (js->clj-keywordize lookup))))
+;;     (meta handler)))
+
 (defn make-handler [handler]
   (fn [event lookup]
     (clj->js (handler ctx

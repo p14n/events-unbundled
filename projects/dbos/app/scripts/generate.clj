@@ -3,11 +3,18 @@
             ["fs" :refer [writeFileSync]]
             [clj.handlers :refer [handlers]]))
 
+;; export enum {{name}}EventType {
+;;   {{#events}}
+;;   {{name}} = \"{{name}}\"{{^last}}, {{/last}}
+;;   {{/events}}
+;; }
+
+
 (def tmpl "import { DBOS } from \"@dbos-inc/dbos-sdk\";
 import { handlers } from './clj.js'
 
 export class {{name}} {
-
+           
  {{#handlers}}
   {{#hasLookup}}
   @DBOS.transaction({readOnly: true})
@@ -20,7 +27,6 @@ export class {{name}} {
   {{/hasLookup}}
   {{#hasWrite}}
   @DBOS.transaction({readOnly: false})
-  @DBOS.step()
   static {{hname}}Write(event: any): Promise<any> {
     const { {{hname}} } = handlers;
     return {{hname}}.write(event);
@@ -40,19 +46,36 @@ export class {{name}} {
     const newEvent = {{hname}}.handler(event,lookup);
     DBOS.logger.info(`Completed handler ${JSON.stringify(newEvent)}`);
   {{#hasWrite}}
-    await newEvent ? Workflows.{{hname}}Write(newEvent) : Promise.resolve();
-    DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
+    if (newEvent) {
+      await Workflows.{{hname}}Write(newEvent);
+      DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
+    }
   {{/hasWrite}}
     if (newEvent) {
       DBOS.setEvent(\"event\", newEvent);
     }
     return newEvent;
   }
+
 {{/handlers}}           
 }")
 
 (let [wf-name "Workflows"
+      metas (->> handlers
+                 vals
+                 (map :handler)
+                 (map meta))
+      receives (->> metas (map :receives) (mapcat identity))
+      returns (->> metas (map :returns) (mapcat identity))
+      events (->> (concat receives returns)
+                  (set)
+                  (vec)
+                  (map name)
+                  (sort))
       handler-definitions {"name" wf-name
+                           "events" (conj (mapv (fn [e] {"name" e}) (drop-last events))
+                                          {"name" (last events)
+                                           "last" true})
                            "handlers" (->> handlers
                                            (map (fn [[k v]]
                                                   {"hname" (name k)

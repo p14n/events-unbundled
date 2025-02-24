@@ -44,12 +44,9 @@ export class {{name}} {
     DBOS.logger.info(`Completed write ${JSON.stringify(newEvent)}`);
   {{/hasWrite}}
     if (newEvent) {
-      //DBOS.setEvent(\"event\", newEvent);
-      return newEvent;
+      DBOS.setEvent(\"event\", newEvent);
     }
-    const notify = await DBOS.recv(\"notify\",1);
-    DBOS.logger.info(`Completed notify ${JSON.stringify(notify)}`);
-    return notify;
+    return newEvent;
   }
 {{/handlers}}           
 }")

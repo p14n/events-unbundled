@@ -10,14 +10,4 @@ export class AppServer {
     return await handle.getResult();
   }
 
-  @DBOS.postApi('/crash')
-  static async crash() {
-    process.exit(1);
-  }
-
-  @DBOS.getApi('/')
-  static async serve() {
-      return send(DBOS.koaContext, "app.html", {root: 'html'}); // Adjust root to point to directory w/ files
-  }
-
 } 

@@ -2,27 +2,20 @@
   (:require ["@dbos-inc/dbos-sdk" :as dbos]
             [promesa.core :as p]))
 
-(defn knex-client []
-  (.-knexClient dbos/DBOS))
-
-(defn raw [sql params]
-  (let [client (knex-client)]
-    (.raw client sql (clj->js params))))
-
 (defn sqlclient
   ([sql & args]
    (let [r (.raw (.-knexClient dbos/DBOS) sql (clj->js args))]
      (js/Promise. (fn [resolve _reject]
                     (.then r resolve))))))
 
-(defn notify-channel [m]
+(defn send [m]
   (when m
     (let [wid (.-workflowID dbos/DBOS)]
       (.send dbos/DBOS wid (clj->js m) "notify")
       nil)))
 
 (def ctx {:db sqlclient
-          :event-notify-ch notify-channel})
+          :event-notify-ch identity})
 
 (defn js->clj-keywordize [m]
   (js->clj m :keywordize-keys true))

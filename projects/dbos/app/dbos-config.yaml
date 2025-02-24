@@ -19,4 +19,4 @@ database:
     - npx knex --knexfile knexfile.cjs migrate:rollback
 telemetry:
   logs:
-    logLevel: 'info'
+    logLevel: 'debug'

@@ -2,18 +2,20 @@
   (:require ["@dbos-inc/dbos-sdk" :as dbos]
             [promesa.core :as p]))
 
+(defn knex-client []
+  (.-knexClient dbos/DBOS))
+
+(defn raw [sql params]
+  (let [client (knex-client)]
+    (.raw client sql (clj->js params))))
+
 (defn sqlclient
-  ([sql]
-   (let [r (.raw (.-knexClient dbos/DBOS) sql)]
-     (js/Promise. (fn [resolve _reject]
-                    (.then r resolve)))))
-  ([sql args]
-   (let [r (.raw (.-knexClient dbos/DBOS) sql args)]
+  ([sql & args]
+   (let [r (.raw (.-knexClient dbos/DBOS) sql (clj->js args))]
      (js/Promise. (fn [resolve _reject]
                     (.then r resolve))))))
 
 (defn notify-channel [m]
-  (println "notify-channel" m)
   (when m
     (let [wid (.-workflowID dbos/DBOS)]
       (.send dbos/DBOS wid (clj->js m) "notify")
@@ -44,7 +46,8 @@
 
 (defn make-write [write]
   (fn [event]
-    (write ctx (js->clj-event event))))
+    (write ctx (js->clj-event event))
+    (clj->js event)))
 
 (defn rows->clj [result]
   (let [rows (.-rows result)]

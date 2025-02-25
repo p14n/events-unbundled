@@ -1,7 +1,7 @@
 ## Managed workflow on DBOS
 The appeal of DBOS is the amount you get for free: tracing and reliable, replayable workflows. Its not quite CQRS (I didn't include the projections), but could fill a really important role in a transactional system.  The API for DBOS is Typescript and uses decorators.  The approach I've taken is:
 
-* Workflow functions are all using [clojure] (app/src/clj/handlers.clj) using the existing event handlers
+* Workflow functions are all using [clojure](app/src/clj/handlers.clj) using the existing event handlers
 * Typescript low-level workflow definitions for these functions are generated from these handlers [clojure](scripts/generate.clj)
 * These workflows are used from hand written high-level workflows (app/src/ts/InviteCustomer.ts)
 

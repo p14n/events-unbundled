@@ -3,13 +3,6 @@
             ["fs" :refer [writeFileSync]]
             [clj.handlers :refer [handlers]]))
 
-;; export enum {{name}}EventType {
-;;   {{#events}}
-;;   {{name}} = \"{{name}}\"{{^last}}, {{/last}}
-;;   {{/events}}
-;; }
-
-
 (def tmpl "import { DBOS } from \"@dbos-inc/dbos-sdk\";
 import { handlers } from './clj.js'
 
@@ -61,21 +54,7 @@ export class {{name}} {
 }")
 
 (let [wf-name "Workflows"
-      metas (->> handlers
-                 vals
-                 (map :handler)
-                 (map meta))
-      receives (->> metas (map :receives) (mapcat identity))
-      returns (->> metas (map :returns) (mapcat identity))
-      events (->> (concat receives returns)
-                  (set)
-                  (vec)
-                  (map name)
-                  (sort))
       handler-definitions {"name" wf-name
-                           "events" (conj (mapv (fn [e] {"name" e}) (drop-last events))
-                                          {"name" (last events)
-                                           "last" true})
                            "handlers" (->> handlers
                                            (map (fn [[k v]]
                                                   {"hname" (name k)

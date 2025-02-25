@@ -1,0 +1,18 @@
+language: node
+runtimeConfig:
+  entrypoints:
+    - dist/main.js
+database:
+  hostname: userdb-ae660b85-e98e-426d-bf5e-b541299cccf3.cvc4gmaa6qm9.us-east-1.rds.amazonaws.com
+  port: 5432
+  username: dbos_user
+  password: 
+  app_db_client: knex
+  migrate:
+    - npx knex --knexfile knexfile.cjs migrate:latest
+  rollback:
+    - npx knex --knexfile knexfile.cjs migrate:rollback
+  local_suffix: false
+telemetry:
+  logs:
+    logLevel: debug

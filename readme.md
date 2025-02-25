@@ -59,6 +59,7 @@ I took a very simple business process (invite a customer by email) and wrote the
 * [Introducing postgres](projects/gql-kafka-xtdb-postgres/) - While xtdb is great for providing reads downstream, it leaves us with an important gap; referential integrity.  Postgres would allow us to perform multiple checks on our data (including UPDATE... WHERE...), meaning we don't accept an event into the system unless we're really sure it's valid.
 * [Introducing datomic](projects/gql-kafka-datomic/) - I'm a datomic fan, and while it has some downsides (single write with unclear max throughput, hard limit on db size) it has some wonderful characteristics that are worth exploring
 * [Going serverless](projects/aws-serverless/) - The driver for this was cost.  It's useful to be able to stand up an application and leave it running, but even the simplest project so far (gql-async) would require a stateful service.  Serverless also brings massive burst scale without architectural changes, so I was particularly interested to see if the model worked.  
+* [Managed workflow on DBOS](projects/dbos/) - A friend of mine introduced me to DBOS.  It's a fully managed service similar to AWS Step functions, which offers low maintenance and low cost.  I was particularly interested to see if the model worked on something much more opinionated than the previous projects.  
 
 Note there is also a 'fifth project' in the [unit test](functions/test/core_test.clj) of the functions.  This is really important; the essential logic can be tested very simply and very quickly.
 

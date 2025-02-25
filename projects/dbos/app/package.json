@@ -10,13 +10,11 @@
   "devDependencies": {
     "@dbos-inc/dbos-cloud": "^2.3.10",
     "mustache": "^4.2.0",
-    "nbb": "^1.2.187",
     "nodemon": "^3.1.0",
     "typescript": "^5.4.5"
   },
   "dependencies": {
     "@dbos-inc/dbos-sdk": "^2.3.10",
-    "@koa/send": "^6.0.0",
-    "express": "^4.21.2"
+    "nbb": "^1.2.187"
   }
 }

@@ -1,0 +1,22 @@
+# To enable auto-completion and validation for this file in VSCode, install the RedHat YAML extension
+# https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dbos-inc/dbos-transact-ts/main/dbos-config.schema.json
+
+language: node
+runtimeConfig:
+  entrypoints:
+    - "dist/main.js"
+database:
+  hostname: "127.0.0.1"
+  port: 5432
+  username: "postgres"
+  password: "dbos"
+  app_db_client: knex
+  migrate:
+    - npx knex --knexfile knexfile.cjs migrate:latest
+  rollback:
+    - npx knex --knexfile knexfile.cjs migrate:rollback
+telemetry:
+  logs:
+    logLevel: 'debug'

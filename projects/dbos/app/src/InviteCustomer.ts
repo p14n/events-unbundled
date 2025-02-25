@@ -17,7 +17,6 @@ export class InviteCustomer {
             }
         }
         return inviteCustomerResult;
-
     }
 
 }

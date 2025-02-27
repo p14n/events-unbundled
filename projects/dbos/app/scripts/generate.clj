@@ -11,7 +11,6 @@ export class {{name}} {
  {{#handlers}}
   {{#hasLookup}}
   @DBOS.transaction({readOnly: true})
-  @DBOS.step()
   static {{hname}}Lookup(event: any): Promise<any> {
     const { {{hname}} } = handlers;
     return {{hname}}.lookup(event);

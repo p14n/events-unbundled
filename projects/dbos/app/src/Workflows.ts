@@ -4,7 +4,6 @@ import { handlers } from './clj.js'
 export class Workflows {
            
   @DBOS.transaction({readOnly: true})
-  @DBOS.step()
   static inviteCustomerLookup(event: any): Promise<any> {
     const { inviteCustomer } = handlers;
     return inviteCustomer.lookup(event);
